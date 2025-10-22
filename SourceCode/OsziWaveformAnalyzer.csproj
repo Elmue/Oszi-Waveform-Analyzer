@@ -51,6 +51,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ExImport\BigEndianReader.cs" />
+    <Compile Include="ExImport\CsvParser.cs" />
     <Compile Include="ExImport\OsziFile.cs" />
     <Compile Include="Operations\Digitizer.cs" />
     <Compile Include="Platform\PlfMono.cs" />
