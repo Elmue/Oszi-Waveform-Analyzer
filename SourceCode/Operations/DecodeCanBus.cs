@@ -596,8 +596,9 @@ namespace Operations
                             s32_State = s32_NewState;
                             b_TimingError = s32_CurSample > mi_Timing.SteadyStart && s32_CurSample < mi_Timing.SteadyEnd;
 
-                            // Florian Hartwich @ Bosch GmbH: "CAN nodes synchronize on received edges from recessive to dominant".
-                            // http://www.oertel-halle.de/files/icc14_2013_paper_Hartwich.pdf    page 04-2
+                            // See "Bosch CAN FD - Timing Requirements.pdf" in subfolder "Documentation" page 04-3
+                            // CAN nodes synchronize on received edges from recessive to dominant.
+                            // The dominant bit after FDF is hard synchronization.
                             if (s32_NewState == 0) // 0 = dominant
                             {
                                 if (s32_CurSample > mi_Timing.SamplePoint) 
