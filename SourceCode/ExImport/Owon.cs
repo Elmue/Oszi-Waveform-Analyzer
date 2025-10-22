@@ -417,11 +417,10 @@ namespace ExImport
                 throw new Exception("The file does not contain channel data.");
 
             Capture i_Capture = new Capture();
-            i_Capture.ms_Path          = i_Stream.Name;
-            i_Capture.ms32_AnalogRes   = 8;
-            i_Capture.ms32_AnalogCount = i_ChanConfigs.Count;
-            i_Capture.ms32_Samples     = i_ChanConfigs[0].ms32_ScreenDataLen;
-            i_Capture.ms64_SampleDist  = s64_Duration / i_Capture.ms32_Samples;
+            i_Capture.ms_Path         = i_Stream.Name;
+            i_Capture.ms32_AnalogRes  = 8;
+            i_Capture.ms32_Samples    = i_ChanConfigs[0].ms32_ScreenDataLen;
+            i_Capture.ms64_SampleDist = s64_Duration / i_Capture.ms32_Samples;
 
             foreach (kChanConf k_ChanConf in i_ChanConfigs)
             {
@@ -523,12 +522,11 @@ namespace ExImport
             }
 
             Capture i_Capture = new Capture();
-            i_Capture.ms_Path          = i_Stream.Name;
-            i_Capture.ms32_AnalogRes   = 8;
-            i_Capture.ms32_AnalogCount = i_Analog.Count;
-            i_Capture.ms32_Samples     = i_Analog[0].Count;
-            i_Capture.ms64_SampleDist  = s64_SampleDist;
-            i_Capture.ms32_Separators  = i_Separators.ToArray();
+            i_Capture.ms_Path         = i_Stream.Name;
+            i_Capture.ms32_AnalogRes  = 8;
+            i_Capture.ms32_Samples    = i_Analog[0].Count;
+            i_Capture.ms64_SampleDist = s64_SampleDist;
+            i_Capture.ms32_Separators = i_Separators.ToArray();
 
             for (int C=0; C<i_Analog.Count; C++)
             {
@@ -539,131 +537,6 @@ namespace ExImport
                 i_Capture.mi_Channels.Add(i_Channel);
             }
             return i_Capture;
-        }
-
-        // ======================================================================================
-
-        /// <summary>
-        /// The stupid OWON CSV file has a DECREASING time!
-        /// The Voltage is in milli Volt.
-        /// Each version of this CRAP software stores another format!
-        /// 
-        /// This is version 1.1.5
-        /// -----------------------
-        /// #,Time(ms),CH1(mV)
-        /// 0,3.0000000,10320.00              --> 3 ms
-        /// 1,2.9960000,10320.00              --> 2.996 ms
-        /// 2,2.9920000,10240.00              --> 2.992 ms
-        /// 3,2.9880000,10240.00              --> 2.988 ms
-        /// 
-        /// This is version 1.1.7
-        /// -----------------------
-        /// Unit:(mV)
-        /// ,CH1
-        /// Frequency,866.567 Hz
-        /// Period,1.154 ms
-        /// 1,10480.00
-        /// 2,10480.00
-        /// 3,10480.00
-        /// 
-        /// It is not anymore possible to import the CSV file from the garbage version 1.1.7
-        /// The time information is missing.
-        /// The values of Frequency and Period are complete garbage.
-        /// The above example is from a capture with 1 ms/div
-        /// The timing information is completely missing in the file.
-        /// This file cannot be imported.
-        /// Not even the CRAP application itself can load this file.
-        /// </summary>
-        public static Capture ParseCsvFile(String s_Path, ref bool b_Abort)
-        {
-          using (StreamReader i_Reader = new StreamReader(s_Path))
-          {
-            String s_Heading = i_Reader.ReadLine();
-            if (s_Heading == null)
-                throw new Exception("The CSV file is empty.");
-
-            if (!s_Heading.Contains("Time(ms)") || !s_Heading.Contains("(mV)"))
-                throw new Exception("The CSV file is not in the expected OWON format.");
-
-            String[] s_HeadParts = s_Heading.Split(',');
-            int s32_Channels = s_HeadParts.Length - 2;
-            if (s32_Channels < 1)
-                throw new Exception("The CSV file must contain at least 1 channel.");
-
-            List<float>[] i_Analog = new List<float>[s32_Channels];
-            String[]      s_Names  = new String[s32_Channels];
-            for (int C=0; C<s32_Channels; C++)
-            {
-                i_Analog[C] = new List<float>();
-
-                // The primitive OWON software does not store user-defined channel names. They are always "CH1", "CH2",...
-                s_Names[C] = s_HeadParts[C+2].Substring(0,3);
-            }
-
-            String s_FirstTime = null;
-            String s_LastTime  = null;
-            int   s32_Samples  = 0;
-            for (int s32_CurLine=2; true; s32_CurLine++)
-            {
-                String s_Line = i_Reader.ReadLine();
-                if (s_Line == null)
-                    break;
-
-                s_Line = s_Line.Trim();
-                if (s_Line.Length == 0)
-                    continue;
-
-                String[] s_LineParts = s_Line.Split(',');
-                if (s_LineParts.Length != s_HeadParts.Length)
-                    throw new Exception("The CSV file contains corrupt data in line " + s32_CurLine);
-
-                if (s_FirstTime == null)
-                    s_FirstTime = s_LineParts[1];
-
-                s_LastTime = s_LineParts[1];
-
-                for (int C=0; C<s32_Channels; C++)
-                {
-                    // Important: On a german Windows a comma is used for floats instead of dot!
-                    // Use invariant culture to force using dot.
-                    float f_Value;
-                    if (!float.TryParse(s_LineParts[C+2], NumberStyles.Float, CultureInfo.InvariantCulture, out f_Value))
-                        throw new Exception("Invalid float number in CSV line " + s32_CurLine);
-
-                    i_Analog[C].Add(f_Value / 1000.0f);
-                }
-                s32_Samples ++;
-
-                if (b_Abort)
-                    return null;
-            }
-
-            double d_Start, d_End;
-            if (!double.TryParse(s_FirstTime, NumberStyles.Float, CultureInfo.InvariantCulture, out d_Start) ||
-                !double.TryParse(s_LastTime,  NumberStyles.Float, CultureInfo.InvariantCulture, out d_End))
-                throw new Exception("The CSV file contains invalid time stamps");
-
-            double d_TotTime; // in ms
-            if (d_End > d_Start) d_TotTime = d_End - d_Start;
-            else                 d_TotTime = d_Start - d_End;
-
-            double d_Increment = d_TotTime / (s32_Samples - 1);
-
-            Capture i_Capture = new Capture();
-            i_Capture.ms_Path = s_Path;
-            i_Capture.ms32_Samples     = s32_Samples;
-            i_Capture.ms32_AnalogCount = s32_Channels;
-            i_Capture.ms32_AnalogRes   = 8;
-            i_Capture.ms64_SampleDist  = (Int64)((decimal)d_Increment * Utils.PICOS_PER_SECOND / 1000.0m);
-
-            for (int C=0; C<s32_Channels; C++)
-            {
-                Channel i_Channel   = new Channel(s_Names[C]);
-                i_Channel.mf_Analog = i_Analog[C].ToArray();
-                i_Capture.mi_Channels.Add(i_Channel);
-            }
-            return i_Capture;
-          }
         }
     }
 }
