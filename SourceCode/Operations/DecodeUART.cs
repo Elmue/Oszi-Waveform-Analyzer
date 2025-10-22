@@ -114,6 +114,7 @@ namespace Operations
             mi_DemoFiles.Add("ISO 14230 K-Line Bus-Init 10400 Baud.oszi",                 "10400,Low,8,None,One,ISO14230,false");
             mi_DemoFiles.Add("Yamaha XTZ 250 K-Line OWON VDS 1022.csv",                   "15400,Low,8,None,One,None,false");
             mi_DemoFiles.Add("Yamaha XTZ 250 K-Line OWON VDS 1022.bin",                   "15400,Low,8,None,One,None,false");
+            mi_DemoFiles.Add("Yamaha XTZ 250 K-Line Picoscope 3206.csv",                  "15400,Low,8,None,One,None,false");
             mi_DemoFiles.Add("RS232 Pinpad 19200 Odd 1 Stop.oszi",                        "19200,High,8,Odd,One,None,false");
             mi_DemoFiles.Add("RS232 Pinpad 115200 Mark 2 Stop.oszi",                      "115200,High,8,Mark,Two,None,false");
             mi_DemoFiles.Add("ISO 7816 Smartcard 12795 + 51182 Baud - Clk 4,76 MHz.oszi", "12795,Low,8,Even,Two,ISO7816,true");
