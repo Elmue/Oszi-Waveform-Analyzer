@@ -50,6 +50,7 @@ using Capture           = OsziWaveformAnalyzer.Utils.Capture;
 using Channel           = OsziWaveformAnalyzer.Utils.Channel;
 using eRegKey           = OsziWaveformAnalyzer.Utils.eRegKey;
 using Utils             = OsziWaveformAnalyzer.Utils;
+using CsvParser         = ExImport.CsvParser;
 
 namespace Transfer
 {
@@ -79,6 +80,9 @@ namespace Transfer
 
             [Description("OWON VDS 1022 and VDS 2052")]
             OWON_1022,  
+
+            [Description("Picoscope 3206 MSO")]
+            Picoscope_3206,
 
             // TODO: Add more oscilloscope brands like Tektronix, Rhode & Schwarz, Siglent, ...
         }
@@ -141,6 +145,9 @@ namespace Transfer
                 case eOsziSerie.OWON_1022:
                     throw new Exception("For OWON the SCPI transfer is not yet implemented.\nBut you can import a CSV, BIN or CAP file.");
 
+                case eOsziSerie.Picoscope_3206:
+                    throw new Exception("For Picoscope 3206 the SCPI transfer is not yet implemented.\nBut you can import a CSV file.");
+
                 // TODO: Add Tektronix, Rhode & Schwarz, Siglent, ...
 
                 default:
@@ -160,18 +167,24 @@ namespace Transfer
         {
             Utils.RegWriteString(eRegKey.OsziSerie, i_ComboOsziModel.Text);
 
-            String s_FileExt = Path.GetExtension(s_Path).ToLower();
-
+            String     s_FileExt   = Path.GetExtension(s_Path).ToLower();
             eOsziSerie e_OsziSerie = (eOsziSerie)i_ComboOsziModel.SelectedIndex;
+
+            if (s_FileExt == ".csv")
+            {
+                CsvParser i_Parser = new CsvParser();
+                return i_Parser.Parse(s_Path, e_OsziSerie, ref b_Abort); // throws if CSV import is not implemented
+            }
+
+            // Import other formats than CSV
             switch (e_OsziSerie)
             {
                 case eOsziSerie.Rigol_1000DE:
                 case eOsziSerie.Rigol_1000Z:
-                    if (s_FileExt == ".csv") return Rigol.ParseCsvFile(s_Path, e_OsziSerie, ref b_Abort);
+                case eOsziSerie.Picoscope_3206:
                     throw new Exception("For " + i_ComboOsziModel.Text + " only CSV file import is implemented.");
 
                 case eOsziSerie.OWON_1022:
-                    if (s_FileExt == ".csv") return ExImport.OWON.ParseCsvFile   (s_Path, ref b_Abort);
                     if (s_FileExt == ".cap") return ExImport.OWON.ParseBinaryFile(s_Path, ref b_Abort);
                     if (s_FileExt == ".bin") return ExImport.OWON.ParseBinaryFile(s_Path, ref b_Abort);
                     throw new Exception("For " + i_ComboOsziModel.Text + " only CSV, BIN and CAP file import is implemented.");
