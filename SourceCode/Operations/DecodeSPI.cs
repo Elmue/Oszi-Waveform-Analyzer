@@ -96,7 +96,7 @@ namespace Operations
 
             foreach (String s_DemoFile in mi_DemoFiles.Keys)
             {
-                Debug.Assert(File.Exists(Utils.SampleDir + '\\' + s_DemoFile), "File does not exist: " + s_DemoFile);
+                Utils.CheckDemoFileExists(s_DemoFile);
             }
         }
 

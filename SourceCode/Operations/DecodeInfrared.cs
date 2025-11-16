@@ -99,8 +99,8 @@ namespace Operations
         /// </summary>
         static DecodeInfrared()
         {
-            Debug.Assert(File.Exists(Utils.SampleDir + "\\Infrared Remote Control Grundig.oszi"), "Demo file missing");
-            Debug.Assert(File.Exists(Utils.SampleDir + "\\Infrared Remote Control Yamaha.oszi"),  "Demo file missing");
+            Utils.CheckDemoFileExists("Infrared Remote Control Grundig.oszi");
+            Utils.CheckDemoFileExists("Infrared Remote Control Yamaha.oszi");
         }
 
         // The time in µs after which idle state is detected (no signal)
@@ -137,7 +137,7 @@ namespace Operations
         {
             try
             {
-                String s_IniPath = Utils.AppDir + "\\RemoteControl.ini";
+                String s_IniPath = Path.Combine(Utils.AppDir, "RemoteControl.ini");
                 if (File.Exists(s_IniPath))
                     mi_RemoteIni = Utils.ReadIniFile(s_IniPath);
 

@@ -72,8 +72,8 @@ namespace Operations
         /// </summary>
         static DecodeMagStripe()
         {
-            Debug.Assert(File.Exists(Utils.SampleDir + "\\ISO 7813 Magnetic Stripe Bank Card.oszi"),     "Demo file missing");
-            Debug.Assert(File.Exists(Utils.SampleDir + "\\ISO 7813 Magnetic Stripe Card 3 Tracks.oszi"), "Demo file missing");
+            Utils.CheckDemoFileExists("ISO 7813 Magnetic Stripe Bank Card.oszi");
+            Utils.CheckDemoFileExists("ISO 7813 Magnetic Stripe Card 3 Tracks.oszi");
         }
 
         // Allow max 20% devitation of the lead-in toggle lengths, which are long intervals ("0")
