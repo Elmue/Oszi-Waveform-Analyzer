@@ -204,7 +204,7 @@ namespace ExImport
                 return null;
             }
 
-            String s_Path = Utils.SampleDir + "\\" + mi_TextFileName.Text;
+            String s_Path = Path.Combine(Utils.SampleDir, mi_TextFileName.Text);
             switch (me_SaveAs)
             {
                 case eSaveAs.OsziFilePlain:
