@@ -1,6 +1,6 @@
-/*
+ï»¿/*
 ------------------------------------------------------------
-Oscilloscope Waveform Analyzer by ElmüSoft (www.netcult.ch/elmue)
+Oscilloscope Waveform Analyzer by ElmÃ¼Soft (www.netcult.ch/elmue)
 This code is released under the terms of the GNU General Public License.
 ------------------------------------------------------------
 
@@ -1076,7 +1076,7 @@ namespace OsziWaveformAnalyzer
                 return;
             }
 
-            const String SEPARATOR = "—————————————\n";
+            const String SEPARATOR = "â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”\n";
 
             String s_Tooltip = null;
             Point  k_Mouse;
@@ -1213,7 +1213,7 @@ namespace OsziWaveformAnalyzer
             {
                 k_Mouse.X += 10;
                 k_Mouse.Y += 10;
-                s_Tooltip  = s_Tooltip.TrimEnd('\n', '—');
+                s_Tooltip  = s_Tooltip.TrimEnd('\n', 'â€”');
 
                 // If the tooltip is shown below the mouse pointer and does not fit on the screen, it flickers at the right of the screen.
                 // In the upper half of the OsziPanel show the tooltip above the mouse.

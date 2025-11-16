@@ -489,18 +489,18 @@ namespace OsziWaveformAnalyzer
             try
             {
                 ms_AppDir    = Path.GetDirectoryName(Application.ExecutablePath);
-                ms_SampleDir = ms_AppDir + "\\Samples";
+                ms_SampleDir = Path.Combine(ms_AppDir, "Samples");
 
-                ms_WinInstaller = ms_AppDir + "\\Driver\\dpinst-amd64.exe";
-                String s_Driver = ms_AppDir + "\\Driver\\amd64\\ausbtmc.sys";
+                ms_WinInstaller = Path.Combine(ms_AppDir, "Driver", "dpinst-amd64.exe");
+                String s_Driver = Path.Combine(ms_AppDir, "Driver", "amd64", "ausbtmc.sys");
                 if (!File.Exists(ms_WinInstaller) || !File.Exists(s_Driver))
                     throw new Exception("Driver files not found");
 
-                ms_HelpHtmlPath = ms_AppDir + "\\Manual.htm";
+                ms_HelpHtmlPath = Path.Combine(ms_AppDir, "Manual.htm");
                 if (!File.Exists(ms_HelpHtmlPath))
                     throw new Exception("Help HTML file not found");
 
-                if (!File.Exists(ms_AppDir + "\\Images\\OsziWaveformAnalyzer.png"))
+                if (!File.Exists(Path.Combine(ms_AppDir, "Images", "OsziWaveformAnalyzer.png")))
                     throw new Exception("Help HTML is incomplete");
             }
             catch (Exception Ex)
@@ -1087,6 +1087,14 @@ namespace OsziWaveformAnalyzer
                 ShowExceptionBox(i_Owner, Ex, "Error moving file to recycler. It is probably open.\n" + s_Path);
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Only if Debug compiled: Check if an OSZI demo file is missing
+        /// </summary>
+        public static void CheckDemoFileExists(String s_Filename)
+        {
+            Debug.Assert(File.Exists(Path.Combine(SampleDir, s_Filename)), "Demo file missing: " + s_Filename);
         }
     }
 }

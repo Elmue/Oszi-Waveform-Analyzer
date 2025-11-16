@@ -69,7 +69,6 @@ namespace OsziWaveformAnalyzer
         bool             mb_Abort;
         bool             mb_InitDone;
         ExImportManager  mi_ExImport;
-        OperationManager mi_Operations;
         Timer            mi_StatusTimer  = new Timer();
         Timer            mi_CmdLineTimer = new Timer();
         CheckBox[]       mi_CheckBoxes   = new CheckBox[0];
@@ -94,8 +93,7 @@ namespace OsziWaveformAnalyzer
 
                 Utils.Init(this, osziPanel);
 
-                mi_Operations = new OperationManager();
-                mi_ExImport   = new ExImportManager (textFileName, comboOsziModel);
+                mi_ExImport = new ExImportManager (textFileName, comboOsziModel);
 
                 osziPanel.Init(lblInfo, lblDispSamples, checkSepChannels);
                 osziPanel.KeyDown += new KeyEventHandler(OnOsziPanelKeyDown);
