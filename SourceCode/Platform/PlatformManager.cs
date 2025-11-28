@@ -127,7 +127,9 @@ namespace Platform
         /// </summary>
         static PlatformManager()
         {
-            if (Type.GetType("Mono.Runtime") != null)
+            PlatformID e_ID = Environment.OSVersion.Platform;
+
+            if (e_ID == PlatformID.Unix || Type.GetType("Mono.Runtime") != null)
             {
                 me_Runtime  = eRuntime.Mono;
                 mi_Instance = new PlfMono();
