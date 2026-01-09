@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OsziWaveformAnalyzer", "Sourcecode\OsziWaveformAnalyzer.csproj", "{8C028E14-51A7-48C5-96BF-F09511A35D9F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OsziWaveformAnalyzer", "SourceCode\OsziWaveformAnalyzer.csproj", "{8C028E14-51A7-48C5-96BF-F09511A35D9F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

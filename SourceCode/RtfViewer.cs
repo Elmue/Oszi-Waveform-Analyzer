@@ -1,6 +1,6 @@
-/*
+ï»¿/*
 ------------------------------------------------------------
-Oscilloscope Waveform Analyzer by ElmüSoft (www.netcult.ch/elmue)
+Oscilloscope Waveform Analyzer by ElmÃ¼Soft (www.netcult.ch/elmue)
 This code is released under the terms of the GNU General Public License.
 ------------------------------------------------------------
 
@@ -366,7 +366,7 @@ namespace OsziWaveformAnalyzer
         }
 
         /// <summary>
-        /// Adds a new line with a timestamp link of the form "XXX.YYY uu" (for example "97.281 µs")
+        /// Adds a new line with a timestamp link of the form "XXX.YYY uu" (for example "97.281 Âµs")
         /// that the user can click and it jumps to this sample in the OsziPanel.
         /// The URL of the link are the start and end sample number separated by a comma.
         /// b_OneLine = true --> Print the timestamp and the following data into the same line
