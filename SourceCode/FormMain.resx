@@ -125,7 +125,7 @@
   </metadata>
   <data name="checkSaveFactor.ToolTip" xml:space="preserve">
     <value>ATTENTION:
-When this checkbox is checked the resolution of the OSZI file will be reduced by the factor that is displayed in combobox 'Factor'.
+When this checkbox is checked the resolution of the OSZI file will be reduced by the factor that is selected in combobox 'Display Factor'.
 This results in a smaller file size but in a loss of resolution.</value>
   </data>
   <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />

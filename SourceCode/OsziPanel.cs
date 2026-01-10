@@ -512,6 +512,7 @@ namespace OsziWaveformAnalyzer
         /// 3.) Measure the with of the legend
         /// 4.) Adapt the scrollable area of this panel to the signals.
         /// 5.) Adjust the horizontal scrollbar.
+        /// 6.) Invalidate the OsziPanel
         /// This must be called when a new Capture is loaded, when the order of channels has changed,
         /// when channels or marks have been added or removed and when the Display Factor has changed.
         /// b_RestorePos = true --> restore the scrollbar to show the same first sample (ms32_DispStart)
@@ -522,21 +523,20 @@ namespace OsziWaveformAnalyzer
             if (mi_Capture == null)
                 return;
 
-            Parent.Cursor = Cursors.WaitCursor;
+            if (mi_Capture.ms32_Samples > 200000)
+                Parent.Cursor = Cursors.WaitCursor;
 
             // if scrollbar height is not subtracted there will be flickering when resizing the panel and vert/hor scrollbars appear/disappear
             int s32_AvailHeight = ClientSize.Height - SystemInformation.HorizontalScrollBarHeight;
             mi_DrawPos = CalcVerticalDrawPos(s32_AvailHeight, true);
 
-            int s32_GraWidth = 0;
-            if (mi_Capture != null)
-                s32_GraWidth = mi_Capture.ms32_Samples * ms32_Zoom / ms32_DispSteps;
-
+            int s32_GraWidth    = mi_Capture.ms32_Samples * ms32_Zoom / ms32_DispSteps;
             int s32_LegendWidth = MeasureLegend(mi_DrawPos, null);
             AutoScrollMinSize   = new Size(s32_GraWidth + s32_LegendWidth, mi_DrawPos.ms32_SignalBot);
             RecalcHorizScrollPos(b_RestorePos);
 
-            Parent.Cursor = Cursors.Arrow;
+            if (mi_Capture.ms32_Samples > 200000)
+                Parent.Cursor = Cursors.Arrow;
         }
 
         protected override void OnMouseWheel(MouseEventArgs e)
@@ -560,6 +560,7 @@ namespace OsziWaveformAnalyzer
         /// <summary>
         /// b_RestorePos = true --> restore the scrollbar to show the same first sample (ms32_DispStart)
         /// when combobox 'Factor' is changed.
+        /// Invalidates the OsziPanel
         /// </summary>
         public void RecalcHorizScrollPos(bool b_RestorePos = false)
         {
@@ -646,6 +647,8 @@ namespace OsziWaveformAnalyzer
         /// Recalculates the Min/Max values of the channels if required (if mb_AnalogOK or mb_DigitalOK == false)
         /// Calculates drawing position of all channels and fills a DrawPos class
         /// The DrawPos class contains different data which depends if drawing on the screen or into a Bitmap.
+        /// b_GUI = true  --> for display in OsziPanel
+        /// b_GUI = false --> for saving image to disk
         /// </summary>
         private DrawPos CalcVerticalDrawPos(int s32_AvailTotalHeight, bool b_GUI)
         {
@@ -831,7 +834,7 @@ namespace OsziWaveformAnalyzer
         }
 
         /// <summary>
-        /// All samples that are skipped by the Dsiplay Factor must be included into the drawing.
+        /// All samples that are skipped by the Display Factor must be included into the drawing.
         /// Example: 24 millions samples are loaded, Display Factor = 100.000 --> only 240.000 samples are drawn.
         /// Store the minimum and maximum voltages of all samples that are not drawn on the screen.
         /// This is a significant speed optimization when drawing millions of samples.

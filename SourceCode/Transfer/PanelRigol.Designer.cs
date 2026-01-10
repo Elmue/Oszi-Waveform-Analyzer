@@ -28,7 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.groupCapture = new System.Windows.Forms.GroupBox();
+            this.groupTransfer = new System.Windows.Forms.GroupBox();
             this.lblTotDuration = new System.Windows.Forms.Label();
             this.label12 = new System.Windows.Forms.Label();
             this.lblSampleRate = new System.Windows.Forms.Label();
@@ -55,44 +55,53 @@
             this.label3 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
-            this.groupCapture.SuspendLayout();
+            this.groupDcCapture = new System.Windows.Forms.GroupBox();
+            this.label9 = new System.Windows.Forms.Label();
+            this.lblProgress = new System.Windows.Forms.Label();
+            this.comboTotalTime = new System.Windows.Forms.ComboBox();
+            this.label7 = new System.Windows.Forms.Label();
+            this.btnCapture = new System.Windows.Forms.Button();
+            this.comboInterval = new System.Windows.Forms.ComboBox();
+            this.label5 = new System.Windows.Forms.Label();
+            this.groupTransfer.SuspendLayout();
+            this.groupDcCapture.SuspendLayout();
             this.SuspendLayout();
             // 
-            // groupCapture
+            // groupTransfer
             // 
-            this.groupCapture.Controls.Add(this.lblTotDuration);
-            this.groupCapture.Controls.Add(this.label12);
-            this.groupCapture.Controls.Add(this.lblSampleRate);
-            this.groupCapture.Controls.Add(this.label8);
-            this.groupCapture.Controls.Add(this.lblSamplePoints);
-            this.groupCapture.Controls.Add(this.label10);
-            this.groupCapture.Controls.Add(this.btnTransfer);
-            this.groupCapture.Controls.Add(this.radioMemory);
-            this.groupCapture.Controls.Add(this.radioScreen);
-            this.groupCapture.Controls.Add(this.lblSerie);
-            this.groupCapture.Controls.Add(this.label6);
-            this.groupCapture.Controls.Add(this.btnReset);
-            this.groupCapture.Controls.Add(this.btnForceTrig);
-            this.groupCapture.Controls.Add(this.btnSingle);
-            this.groupCapture.Controls.Add(this.btnStop);
-            this.groupCapture.Controls.Add(this.btnRun);
-            this.groupCapture.Controls.Add(this.btnAuto);
-            this.groupCapture.Controls.Add(this.btnClear);
-            this.groupCapture.Controls.Add(this.lblFirmware);
-            this.groupCapture.Controls.Add(this.lblSerial);
-            this.groupCapture.Controls.Add(this.lblModel);
-            this.groupCapture.Controls.Add(this.lblBrand);
-            this.groupCapture.Controls.Add(this.label4);
-            this.groupCapture.Controls.Add(this.label3);
-            this.groupCapture.Controls.Add(this.label2);
-            this.groupCapture.Controls.Add(this.label1);
-            this.groupCapture.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(255)))), ((int)(((byte)(128)))));
-            this.groupCapture.Location = new System.Drawing.Point(5, 2);
-            this.groupCapture.Name = "groupCapture";
-            this.groupCapture.Size = new System.Drawing.Size(540, 154);
-            this.groupCapture.TabIndex = 6;
-            this.groupCapture.TabStop = false;
-            this.groupCapture.Text = "  Rigol  Only  ";
+            this.groupTransfer.Controls.Add(this.lblTotDuration);
+            this.groupTransfer.Controls.Add(this.label12);
+            this.groupTransfer.Controls.Add(this.lblSampleRate);
+            this.groupTransfer.Controls.Add(this.label8);
+            this.groupTransfer.Controls.Add(this.lblSamplePoints);
+            this.groupTransfer.Controls.Add(this.label10);
+            this.groupTransfer.Controls.Add(this.btnTransfer);
+            this.groupTransfer.Controls.Add(this.radioMemory);
+            this.groupTransfer.Controls.Add(this.radioScreen);
+            this.groupTransfer.Controls.Add(this.lblSerie);
+            this.groupTransfer.Controls.Add(this.label6);
+            this.groupTransfer.Controls.Add(this.btnReset);
+            this.groupTransfer.Controls.Add(this.btnForceTrig);
+            this.groupTransfer.Controls.Add(this.btnSingle);
+            this.groupTransfer.Controls.Add(this.btnStop);
+            this.groupTransfer.Controls.Add(this.btnRun);
+            this.groupTransfer.Controls.Add(this.btnAuto);
+            this.groupTransfer.Controls.Add(this.btnClear);
+            this.groupTransfer.Controls.Add(this.lblFirmware);
+            this.groupTransfer.Controls.Add(this.lblSerial);
+            this.groupTransfer.Controls.Add(this.lblModel);
+            this.groupTransfer.Controls.Add(this.lblBrand);
+            this.groupTransfer.Controls.Add(this.label4);
+            this.groupTransfer.Controls.Add(this.label3);
+            this.groupTransfer.Controls.Add(this.label2);
+            this.groupTransfer.Controls.Add(this.label1);
+            this.groupTransfer.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(255)))), ((int)(((byte)(128)))));
+            this.groupTransfer.Location = new System.Drawing.Point(5, 2);
+            this.groupTransfer.Name = "groupTransfer";
+            this.groupTransfer.Size = new System.Drawing.Size(540, 155);
+            this.groupTransfer.TabIndex = 6;
+            this.groupTransfer.TabStop = false;
+            this.groupTransfer.Text = "  Rigol Waveform Transfer  ";
             // 
             // lblTotDuration
             // 
@@ -157,9 +166,9 @@
             // btnTransfer
             // 
             this.btnTransfer.ForeColor = System.Drawing.Color.Black;
-            this.btnTransfer.Location = new System.Drawing.Point(463, 114);
+            this.btnTransfer.Location = new System.Drawing.Point(443, 114);
             this.btnTransfer.Name = "btnTransfer";
-            this.btnTransfer.Size = new System.Drawing.Size(65, 23);
+            this.btnTransfer.Size = new System.Drawing.Size(85, 23);
             this.btnTransfer.TabIndex = 20;
             this.btnTransfer.Text = "Transfer";
             this.btnTransfer.UseVisualStyleBackColor = true;
@@ -172,10 +181,10 @@
             this.radioMemory.ForeColor = System.Drawing.Color.White;
             this.radioMemory.Location = new System.Drawing.Point(298, 126);
             this.radioMemory.Name = "radioMemory";
-            this.radioMemory.Size = new System.Drawing.Size(132, 17);
+            this.radioMemory.Size = new System.Drawing.Size(134, 17);
             this.radioMemory.TabIndex = 11;
             this.radioMemory.TabStop = true;
-            this.radioMemory.Text = "Capture Entire Memory";
+            this.radioMemory.Text = "Transfer Entire Memory";
             this.radioMemory.UseVisualStyleBackColor = true;
             this.radioMemory.CheckedChanged += new System.EventHandler(this.radioMemory_CheckedChanged);
             // 
@@ -185,9 +194,9 @@
             this.radioScreen.ForeColor = System.Drawing.Color.White;
             this.radioScreen.Location = new System.Drawing.Point(298, 108);
             this.radioScreen.Name = "radioScreen";
-            this.radioScreen.Size = new System.Drawing.Size(132, 17);
+            this.radioScreen.Size = new System.Drawing.Size(134, 17);
             this.radioScreen.TabIndex = 10;
-            this.radioScreen.Text = "Capture Visible Screen";
+            this.radioScreen.Text = "Transfer Visible Screen";
             this.radioScreen.UseVisualStyleBackColor = true;
             // 
             // lblSerie
@@ -367,23 +376,130 @@
             this.label1.TabIndex = 0;
             this.label1.Text = "Brand:";
             // 
+            // groupDcCapture
+            // 
+            this.groupDcCapture.Controls.Add(this.label9);
+            this.groupDcCapture.Controls.Add(this.lblProgress);
+            this.groupDcCapture.Controls.Add(this.comboTotalTime);
+            this.groupDcCapture.Controls.Add(this.label7);
+            this.groupDcCapture.Controls.Add(this.btnCapture);
+            this.groupDcCapture.Controls.Add(this.comboInterval);
+            this.groupDcCapture.Controls.Add(this.label5);
+            this.groupDcCapture.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(255)))), ((int)(((byte)(128)))));
+            this.groupDcCapture.Location = new System.Drawing.Point(5, 165);
+            this.groupDcCapture.Name = "groupDcCapture";
+            this.groupDcCapture.Size = new System.Drawing.Size(540, 76);
+            this.groupDcCapture.TabIndex = 27;
+            this.groupDcCapture.TabStop = false;
+            this.groupDcCapture.Text = "  Rigol DC Capture  ";
+            // 
+            // label9
+            // 
+            this.label9.AutoSize = true;
+            this.label9.ForeColor = System.Drawing.Color.White;
+            this.label9.Location = new System.Drawing.Point(12, 49);
+            this.label9.Name = "label9";
+            this.label9.Size = new System.Drawing.Size(51, 13);
+            this.label9.TabIndex = 26;
+            this.label9.Text = "Progress:";
+            // 
+            // lblProgress
+            // 
+            this.lblProgress.AutoSize = true;
+            this.lblProgress.ForeColor = System.Drawing.Color.Cyan;
+            this.lblProgress.Location = new System.Drawing.Point(63, 49);
+            this.lblProgress.Name = "lblProgress";
+            this.lblProgress.Size = new System.Drawing.Size(45, 13);
+            this.lblProgress.TabIndex = 26;
+            this.lblProgress.Text = "Elapsed";
+            // 
+            // comboTotalTime
+            // 
+            this.comboTotalTime.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboTotalTime.FormattingEnabled = true;
+            this.comboTotalTime.Items.AddRange(new object[] {
+            "10 minutes",
+            "30 minutes",
+            "1 hour",
+            "2 hours",
+            "6 hours",
+            "12 hours",
+            "1 day",
+            "2 days",
+            "5 days",
+            "10 days"});
+            this.comboTotalTime.Location = new System.Drawing.Point(265, 22);
+            this.comboTotalTime.Name = "comboTotalTime";
+            this.comboTotalTime.Size = new System.Drawing.Size(85, 21);
+            this.comboTotalTime.TabIndex = 29;
+            // 
+            // label7
+            // 
+            this.label7.AutoSize = true;
+            this.label7.ForeColor = System.Drawing.Color.White;
+            this.label7.Location = new System.Drawing.Point(201, 25);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(60, 13);
+            this.label7.TabIndex = 28;
+            this.label7.Text = "Total Time:";
+            // 
+            // btnCapture
+            // 
+            this.btnCapture.ForeColor = System.Drawing.Color.Black;
+            this.btnCapture.Location = new System.Drawing.Point(443, 20);
+            this.btnCapture.Name = "btnCapture";
+            this.btnCapture.Size = new System.Drawing.Size(84, 23);
+            this.btnCapture.TabIndex = 26;
+            this.btnCapture.Text = "DC Capture";
+            this.btnCapture.UseVisualStyleBackColor = true;
+            this.btnCapture.Click += new System.EventHandler(this.btnCapture_Click);
+            // 
+            // comboInterval
+            // 
+            this.comboInterval.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboInterval.FormattingEnabled = true;
+            this.comboInterval.Items.AddRange(new object[] {
+            "500 ms",
+            "1 second",
+            "2 seconds",
+            "5 seconds",
+            "10 seconds",
+            "30 seconds"});
+            this.comboInterval.Location = new System.Drawing.Point(102, 22);
+            this.comboInterval.Name = "comboInterval";
+            this.comboInterval.Size = new System.Drawing.Size(85, 21);
+            this.comboInterval.TabIndex = 27;
+            // 
+            // label5
+            // 
+            this.label5.AutoSize = true;
+            this.label5.ForeColor = System.Drawing.Color.White;
+            this.label5.Location = new System.Drawing.Point(13, 25);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(85, 13);
+            this.label5.TabIndex = 26;
+            this.label5.Text = "Capture Interval:";
+            // 
             // PanelRigol
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.DimGray;
-            this.Controls.Add(this.groupCapture);
+            this.Controls.Add(this.groupDcCapture);
+            this.Controls.Add(this.groupTransfer);
             this.Name = "PanelRigol";
-            this.Size = new System.Drawing.Size(549, 165);
-            this.groupCapture.ResumeLayout(false);
-            this.groupCapture.PerformLayout();
+            this.Size = new System.Drawing.Size(549, 255);
+            this.groupTransfer.ResumeLayout(false);
+            this.groupTransfer.PerformLayout();
+            this.groupDcCapture.ResumeLayout(false);
+            this.groupDcCapture.PerformLayout();
             this.ResumeLayout(false);
 
         }
 
         #endregion
 
-        private System.Windows.Forms.GroupBox groupCapture;
+        private System.Windows.Forms.GroupBox groupTransfer;
         private System.Windows.Forms.Label lblTotDuration;
         private System.Windows.Forms.Label label12;
         private System.Windows.Forms.Label lblSampleRate;
@@ -410,5 +526,13 @@
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.GroupBox groupDcCapture;
+        private System.Windows.Forms.Button btnCapture;
+        private System.Windows.Forms.ComboBox comboInterval;
+        private System.Windows.Forms.Label label5;
+        private System.Windows.Forms.ComboBox comboTotalTime;
+        private System.Windows.Forms.Label label7;
+        private System.Windows.Forms.Label lblProgress;
+        private System.Windows.Forms.Label label9;
     }
 }

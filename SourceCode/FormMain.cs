@@ -230,7 +230,7 @@ namespace OsziWaveformAnalyzer
             if (Utils.IsBusy)
             {
                 e.Cancel = true;
-                MessageBox.Show(this, "An operation is still active.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, "An operation is still in progress.\nAbort the operation to close the window.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
         }

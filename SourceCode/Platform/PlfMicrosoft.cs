@@ -152,6 +152,20 @@ namespace Platform
 
         #endregion
 
+        #region enums
+
+        [FlagsAttribute]
+        private enum eThreadExecution : uint
+        {
+            ES_SYSTEM_REQUIRED   = 0x00000001, // Forces the system to be in the working state by resetting the system idle timer.
+            ES_DISPLAY_REQUIRED  = 0x00000002, // Forces the display to be on
+            ES_USER_PRESENT      = 0x00000004, // ONLY XP, otherwise failure !!
+            ES_AWAYMODE_REQUIRED = 0x00000040, // Should be used only by media-recording applications
+            ES_CONTINUOUS        = 0x80000000, // Informs the system that the state being set should remain in effect until the next call that uses ES_CONTINUOUS and one of the other state flags is cleared.
+        }       
+
+        #endregion
+
         #region DLL Import
 
         [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
@@ -180,6 +194,9 @@ namespace Platform
 
         [DllImport("kernel32.dll", EntryPoint="LoadLibraryW", CharSet = CharSet.Unicode, SetLastError = true)]
         static extern IntPtr LoadLibrary(String s_File);
+
+        [DllImport("Kernel32.dll")]
+        private static extern eThreadExecution SetThreadExecutionState(eThreadExecution e_State); 
 
         [DllImport("Shlwapi.dll", EntryPoint="AssocQueryStringW", CharSet = CharSet.Unicode, SetLastError = true)]
         static extern int AssocQueryString(int AssocF, int AssocStr, String pszAssoc, String pszExtra, [Out] StringBuilder pszOut, ref int pcchOut);
@@ -376,7 +393,7 @@ namespace Platform
 
                     // Avoid strange error message "File not found" if the device has been disconnected meanwhile.
                     if (s32_Error == ERROR_FILE_NOT_FOUND)
-                        throw new Exception("The device does not exist");
+                        throw new Exception("The device does not exist.\nPlease check if the driver is installed correctly.");
 
                     throw new Win32Exception(s32_Error);
                 }
@@ -469,7 +486,8 @@ namespace Platform
                         // This CancelIo() is EXTREMELY important! If it is missing you get TIMEOUT's again and again
                         CancelIo(mh_Device);
                         throw new TimeoutException("Timeout waiting for response from device.\n"
-                              + "This may happen when an invalid SCPI command was sent or the wrong oscilloscope serie was selected.");
+                                                 + "This may happen when an invalid SCPI command was sent or the wrong oscilloscope "
+                                                 + "serie was selected or when the oscilloscope is busy.");
                     }
 
                     if (!GetOverlappedResult(mh_Device, ref mk_Overlap, out s32_BytesRead, false))
@@ -637,6 +655,16 @@ namespace Platform
             Registry.SetValue(@"HKEY_CURRENT_USER\Software\Classes\.oszi", "", "OsziWaveformFile");
             Registry.SetValue(@"HKEY_CURRENT_USER\Software\Classes\OsziWaveformFile\DefaultIcon",        "", s_Icon);
             Registry.SetValue(@"HKEY_CURRENT_USER\Software\Classes\OsziWaveformFile\shell\open\command", "", s_Open);
+        }
+
+        /// <summary>
+        /// Prevent that the operating system goes into sleep mode
+        /// </summary>
+        public void PreventSleep()
+        {
+            // Calling SetThreadExecutionState without ES_CONTINUOUS simply resets the idle timer; 
+            // to keep the system in the working state, the thread must call this function periodically.
+            SetThreadExecutionState(eThreadExecution.ES_SYSTEM_REQUIRED);
         }
 
         // ============================ SCPI ================================

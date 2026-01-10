@@ -104,6 +104,14 @@ namespace Platform
         }
 
         /// <summary>
+        /// Prevent that the operating system goes into sleep mode
+        /// </summary>
+        public void PreventSleep()
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
         /// This function is called from the button "Install Driver" that should exist in all the Capture Forms.
         /// </summary>
         public void InstallDriver(Form i_Owner)

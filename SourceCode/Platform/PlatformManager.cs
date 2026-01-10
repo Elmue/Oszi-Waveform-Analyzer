@@ -93,6 +93,9 @@ namespace Platform
 
             // Create a new instance of the class that is derived from IDevice and open the device
             IDevice OpenUsbDevice(ScpiCombo i_Combo);
+
+            // Prevent that the operating system goes into sleep mode
+            void PreventSleep();
         }
 
         public interface IDevice : IDisposable

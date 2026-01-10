@@ -171,6 +171,7 @@
         <div><a href="#DemoFiles"        class="MenuLink" onClick="ShowMenu(false)">Demo Files</a></div>
         <div><a href="#Menu"             class="MenuLink" onClick="ShowMenu(false)">Keyboard, Mouse and Menu</a></div>
         <div><a href="#MeasureTime"      class="MenuLink" onClick="ShowMenu(false)">Measure Timing</a></div>
+        <div><a href="#DC_Capture"       class="MenuLink" onClick="ShowMenu(false)">DC Capture</a></div>
         <div><a href="#AD_Conversion"    class="MenuLink" onClick="ShowMenu(false)">A/D Conversion</a></div>
         <div><a href="#NoiseSuppression" class="MenuLink" onClick="ShowMenu(false)">Noise Suppression</a></div>
         <div><a href="#SplitHalfDuplex"  class="MenuLink" onClick="ShowMenu(false)">Split Half Duplex Communication</a></div>
@@ -230,7 +231,7 @@
 <li><div>Oszi Waveform Analyzer does <span class="Error">NOT</span> require any huge installations like NI-VISA (1 GB), TekVISA (100 MB), IVI, UltraSigma (500 MB).</div>
 <li><div>Oszi Waveform Analyzer requires only the .NET framework 4.0 or higher.</div>
 <li><div>Oszi Waveform Analyzer runs on <b>Windows 7, 8, 10 and 11</b>.</div>
-<li><div>Oszi Waveform Analyzer can run on Mono on <b>Linux</b> and <b>Mac</b>. If you want to use USB transfer a small class must be added (see <a href="#Download">below</a>).</div>
+<li><div>Oszi Waveform Analyzer can run on Mono or <a href="https://dotnet.microsoft.com/en-us/download/dotnet/6.0" target="_blank">.NET 6</a> on <b>Linux</b> and <b>Mac</b>. Some missing functions have to be added (see <a href="#Download">below</a>).</div>
 <li><div>Oszi Waveform Analyzer includes the installer for the small 64 bit Windows <b>USB TMC driver</b> (24 kB). Linux has the driver already in the kernel.</div>
 <li><div>Oszi Waveform Analyzer supports up to 255 channels that may have analog or digital data or both.</div>
 <li><div>Oszi Waveform Analyzer can <b>zoom</b> the signal horizontally and vertically.</div>
@@ -252,6 +253,7 @@
 <li><div><span class="Error">NEW in v2.1 + v2.2</span>: Bugfixes in I²C decoder (thanks to Peter).</div>
 <li><div><span class="Error">NEW in v2.3</span>: Double clicking an Oszi file does not open a new process (thanks to Peter).</div>
 <li><div><span class="Error">NEW in v2.4</span>: Added CSV import for <b>Picoscope</b> 3206 MSO (thanks to Leonel).</div>
+<li><div><span class="Error">NEW in v2.5</span>: DC Capture allows to capture very slow processes over hours or days.</div>
 </ul>
 
 <a name="Decoders"></a>
@@ -343,6 +345,21 @@
 <p>
 <div>A <b>vertical</b> voltage-related raster is not required because the tooltip shows anywhere the exact voltage under the mouse pointer.</div>
 <div>And you always see the <b>peak voltages</b> of the signal in the legend at the left (here: CAN High from 1.98V to 3.48V)</div>
+
+
+<a name="DC_Capture"></a>
+<h1>DC Capture</h1>
+
+<div>You can use the oscilloscope also to capture very slowly changing DC voltages.</div>
+<div>This allows to capture processes that take hours or even days.</div>
+<div>You can abort the capture whenever you like.</div>
+<div>While a DC capture is in progress Oszi Waveform Analyzer prevents that the computer goes to sleep.</div>
+<p>
+<img src="Images/BatteryCharging.png" width="743" height="288" alt="Oszi Waveform Analyzer - DC Capture of battery charging">
+<p>
+<div>Here I have charged an empty 9 Volt battery over a 220 Ω resistor connected to a 12 Volt supply.</div>
+<div>The plateaus are because of chemical processes and because the multiple cells inside the battery charge at different speeds.</div>
+
 
 <a name="AD_Conversion"></a>
 <h1>A/D Conversion</h1>
@@ -679,7 +696,7 @@
 <h3>Transfer Window</h3>
 
 <p>
-<img src="Images/ScpiTransferWindow.png" width="582" height="408" alt="Oszi Waveform Analyzer - SCPI USB VXI TCP Transfer">
+<img src="Images/ScpiTransferWindow.png" width="582" height="498" alt="Oszi Waveform Analyzer - SCPI USB VXI TCP Transfer">
 <p>
 <div>This window has two parts:</div>
 <ol>
@@ -689,6 +706,7 @@
     <div>With the button <b>Transfer</b> you can transfer the stored signals of all enabled channels to the computer.</div>
     <div>You can chose to copy only the visible screen of 1200 samples or the entire memory of 24 Mega samples.</div>
     <div>The Rigol serie DS1000DE has only memory for 1 Mega samples, so you will see other values here.</div>
+<li><div>The <b>middle part</b> allows to capture very slow processes. See <a href="#DC_Capture">DC Capture</a>.</div>
 <li><div>The <b>lower part</b> works with <b>any</b> SCPI device (oscilloscopes, function generators, multimeters, spectrum analyzers,...)</div>
     <div>The button <b>Send</b> sends any SCPI command to any SCPI device and shows the response.</div>
     <div>For example <b>:CHANNEL1:SCALE?</b> asks the vertical scale of analog channel 1. The response is: 2 Volt/raster unit.</div>

@@ -101,6 +101,8 @@ namespace Transfer
             GetPodDisplay,
             GetTimebaseScale,
             // ----------------
+            GetAvrgVoltage,
+            // ----------------
             COUNT,
         }
 
@@ -142,7 +144,7 @@ namespace Transfer
         {
             public decimal md_SampleRate;     // in Hertz
             public int     ms32_SamplePoints;
-            public Int64   ms64_Duration;     // in pico seconds
+            public Int64   ms64_Duration;     // duration of the entire signal in picoseconds
         }
 
         class Preamble
@@ -247,6 +249,8 @@ namespace Transfer
                 mi_FixData.ms_Commands[(int)eCmd.GetDigiDisplay]    = ":DIGital{0}:TURN?";
                 mi_FixData.ms_Commands[(int)eCmd.GetPodDisplay]     = null;
                 mi_FixData.ms_Commands[(int)eCmd.GetTimebaseScale]  = ":TIMebase:SCALe?";
+                // ---------------------------------
+                mi_FixData.ms_Commands[(int)eCmd.GetAvrgVoltage]    = ":MEASure:VAVerage? CHAN{0}";
                 return;
             }
             
@@ -290,6 +294,8 @@ namespace Transfer
                 mi_FixData.ms_Commands[(int)eCmd.GetDigiDisplay]    = ":LA:DIGITAL{0}:DISPLAY?";
                 mi_FixData.ms_Commands[(int)eCmd.GetPodDisplay]     = ":LA:DISPLAY? POD{0}";
                 mi_FixData.ms_Commands[(int)eCmd.GetTimebaseScale]  = ":TIMEBASE:SCALE?";
+                // ---------------------------------
+                mi_FixData.ms_Commands[(int)eCmd.GetAvrgVoltage]    = ":MEAS:ITEM? VAVG,CHAN{0}";
                 return;
             }
             
@@ -396,7 +402,7 @@ namespace Transfer
         }
 
         /// <summary>
-        /// If i_Config.ms32_SamplePoints == 0 --> the oscilloscope is not ready.
+        /// If return OsziConfig.ms32_SamplePoints == 0 --> the oscilloscope is not ready.
         /// </summary>
         public OsziConfig GetOsziConfiguration(bool b_Memory)
         {
@@ -515,11 +521,11 @@ namespace Transfer
         /// b_Memory = true  --> copy the entire memory (high resolution) Only possible in STOP mode and if no MATH is running!
         /// b_Memory = false --> copy only the part of the signal that is visible on the screen (low resolution)
         /// </summary>
-        public Capture CaptureAllChannels(bool b_Memory)
+        public Capture TransferAllChannels(bool b_Memory)
         {
             mb_Abort = false;
 
-            // returns TD, WAIT, RUN, AUTO or STOP
+            // s_Status = TD, WAIT, RUN, AUTO or STOP
             String s_Status = mi_Scpi.SendStringCommand(GetCmd(eCmd.GetTrigStatus));
             if (s_Status != "STOP")
                 throw new ArgumentException("The oscilloscope is not able to transfer multiple channels at once "
@@ -532,7 +538,7 @@ namespace Transfer
 
             OsziConfig i_Config = GetOsziConfiguration(b_Memory);
             if (i_Config.ms32_SamplePoints == 0)
-                throw new Exception("The oscilloscope is not ready.\nIs there a captured waveform on the screen?");
+                throw new Exception("The oscilloscope is not ready.\nIs there a waveform on the screen?");
 
             Capture i_Capture = new Capture();
             i_Capture.ms32_AnalogRes = mi_FixData.ms32_AnalogRes; // A/D converter resolution
@@ -546,7 +552,7 @@ namespace Transfer
             switch (me_Serie)
             {
                 case eOsziSerie.Rigol_1000DE: 
-                    CaptureAnalog_Serie_1000DE(i_Capture, b_Memory, i_Durations);
+                    TransferAnalog_Serie_1000DE(i_Capture, b_Memory, i_Durations);
                     if (mb_Abort)
                        return null;
 
@@ -554,12 +560,12 @@ namespace Transfer
                     break;
 
                 case eOsziSerie.Rigol_1000Z:  
-                    CaptureAnalog_Serie_1000Z(i_Capture, b_Memory, i_Durations);
+                    TransferAnalog_Serie_1000Z(i_Capture, b_Memory, i_Durations);
                     if (mb_Abort)
                        return null;
 
-                    if (b_Memory) CaptureDigitalFromMemory_Serie_1000Z(i_Capture, i_Durations);
-                    else          CaptureDigitalFromScreen_Serie_1000Z(i_Capture, i_Durations);
+                    if (b_Memory) TransferDigitalFromMemory_Serie_1000Z(i_Capture, i_Durations);
+                    else          TransferDigitalFromScreen_Serie_1000Z(i_Capture, i_Durations);
                     break;
             }
 
@@ -610,7 +616,7 @@ namespace Transfer
         /// The screen of the 1000DE serie does not even have 256 pixels vertical resolution. Each raster square displays 
         /// only 25 vertical pixels on the LCD display, so with 8 vertical rasters we get 8 * 25 = 200 pixels.
         /// </summary>
-        private void CaptureAnalog_Serie_1000DE(Capture i_Capture, bool b_Memory, List<Int64> i_Durations)
+        private void TransferAnalog_Serie_1000DE(Capture i_Capture, bool b_Memory, List<Int64> i_Durations)
         {
             mi_Scpi.SendOpcCommand(GetCmd(eCmd.SetWaveMode, b_Memory ? "RAW" : "NORMAL"));
 
@@ -660,7 +666,7 @@ namespace Transfer
         /// A double uses 8 byte in memory while a float uses 4 bytes.
         /// See file "Logfile SCPI Commands DS1074Z.txt" in subfolder "Documentation" showing an analg WAVEFORM transfer.
         /// </summary>
-        void CaptureAnalog_Serie_1000Z(Capture i_Capture, bool b_Memory, List<Int64> i_Durations)
+        void TransferAnalog_Serie_1000Z(Capture i_Capture, bool b_Memory, List<Int64> i_Durations)
         {
             // Rigol is inconsistent: First analog channel is 1, first digital channel is 0.
             for (int s32_AnalChan = 1; s32_AnalChan <= mi_FixData.ms32_AnalogChannels; s32_AnalChan++)
@@ -696,7 +702,7 @@ namespace Transfer
         /// And as if this was not stupid enough, the digital channels are transferred completely different 
         /// from screen and memory by the SAME oscilloscope!
         /// </summary>
-        void CaptureDigitalFromScreen_Serie_1000Z(Capture i_Capture, List<Int64> i_Durations)
+        void TransferDigitalFromScreen_Serie_1000Z(Capture i_Capture, List<Int64> i_Durations)
         {
             // The Chinese GARBAGE SHIT from Rigol reports digital channels D0 .. D7 to be active although not even the Logic Probe is connected.
             // The command ":LA:DISPLAY? D0" reports always "1".
@@ -756,7 +762,7 @@ namespace Transfer
         /// And as if this was not stupid enough, the digital channels are transferred completely different 
         /// from screen and from memory by the SAME oscilloscope!
         /// </summary>
-        void CaptureDigitalFromMemory_Serie_1000Z(Capture i_Capture, List<Int64> i_Durations)
+        void TransferDigitalFromMemory_Serie_1000Z(Capture i_Capture, List<Int64> i_Durations)
         {
             // Capture from memory --> Read 8 digital channels at once
             // Pod1 = Channels D0...D7
@@ -991,6 +997,116 @@ namespace Transfer
                 mi_Form.PrintStatus(s_Msg, Color.Black);
                 ms32_LastTick = Environment.TickCount;
             }
+        }
+
+        // #############################################################################################
+        //                                          DC Capture
+        // #############################################################################################
+
+        /// <summary>
+        /// Prepare for slow capture of DC voltages.
+        /// </summary>
+        public Capture CreateDcCapture(decimal d_Interval, decimal d_TotTime) // in seconds
+        {
+            // The maximum interval that can be stored in a signed 64 bit variable with pico second resolution is 106 days.
+            if (d_TotTime > 100 * 24 * 60 * 60)
+                throw new Exception("Maximum interval (100 days) exceeded");
+
+            OsziConfig i_Config = GetOsziConfiguration(false);
+            if (i_Config.ms32_SamplePoints == 0)
+                throw new Exception("The oscilloscope is not ready.\nIs there a waveform on the screen?");
+
+            Capture i_DcCapture = new Capture();
+            i_DcCapture.ms64_SampleDist = (Int64)(d_Interval * Utils.PICOS_PER_SECOND);
+            i_DcCapture.ms32_Samples    = (int)(d_TotTime / d_Interval);
+            i_DcCapture.ms32_AnalogRes  = mi_FixData.ms32_AnalogRes;
+            i_DcCapture.mb_Dirty        = true;
+
+            if (i_Config.ms64_Duration >= i_DcCapture.ms64_SampleDist)
+            {
+                String s_Error = String.Format("The screen interval of the oscilloscope ({0}) must be shorter than the capture interval ({1}).",
+                                               Utils.FormatTimePico(i_Config.ms64_Duration), 
+                                               Utils.FormatTimePico(i_DcCapture.ms64_SampleDist));
+                throw new Exception(s_Error);
+            }
+
+            if (i_DcCapture.ms32_Samples < Utils.MIN_VALID_SAMPLES)
+                throw new ArgumentException(Utils.ERR_MIN_SAMPLES);
+
+            for (int s32_AnalChan = 1; s32_AnalChan <= mi_FixData.ms32_AnalogChannels; s32_AnalChan++)
+            {
+                // Check if the channel is enabled
+                if (!mi_Scpi.SendBoolCommand(GetCmd(eCmd.GetAnalDisplay, s32_AnalChan), 250))
+                    continue; // Channel is turned off
+
+                Channel i_Channel = new Channel("Analog " + s32_AnalChan);
+                i_Channel.ms32_Number = s32_AnalChan;
+                i_Channel.mf_Analog   = new float[i_DcCapture.ms32_Samples];
+                i_DcCapture.mi_Channels.Add(i_Channel);
+            }
+
+            if (i_DcCapture.mi_Channels.Count == 0)
+                throw new ArgumentException("At least one analog channel must be enabled.");
+
+            return i_DcCapture;
+        }
+
+        /// <summary>
+        /// Set one analog sample per channel in i_DcCapture at index s32_SampleIndex.
+        /// This function takes approx 5 ms capturing 2 channels on the DS1074Z over USB.
+        /// </summary>
+        public void AddDcSample(Capture i_DcCapture, int s32_SampleIndex)
+        {
+            // This will never assert if the original code has not been modified.
+            Debug.Assert(s32_SampleIndex < i_DcCapture.ms32_Samples, "Internal error: Invalid sample index");
+
+            try
+            {
+                // If the user switches to STOP mode the oscilloscope sends the captured average voltage from memory instead of live data.
+                // s_Status = TD, WAIT, RUN, AUTO or STOP
+                // Mode "TD" is not an error, this may happen when the oscilloscope has triggered on the signal.
+                // This command may throw a timeout exception if the user plays around with the oscilloscope knobs.
+                String s_Status = mi_Scpi.SendStringCommand(GetCmd(eCmd.GetTrigStatus));
+                if (s_Status == "STOP" || s_Status == "WAIT")
+                    throw new ArgumentException("The oscilloscope must be in RUN or AUTO mode.");
+
+                foreach (Channel i_Channel in i_DcCapture.mi_Channels)
+                {
+                    for (int L=1; true; L++)
+                    {
+                        // This may throw a timeout exception if the user plays around with the oscilloscope knobs.
+                        float f_AverageVolt = (float)mi_Scpi.SendDoubleCommand(GetCmd(eCmd.GetAvrgVoltage, i_Channel.ms32_Number)); 
+
+                        // The oscilloscope returns 9.9E+37 Volt when it is busy with anything (mostly due to user interaction).
+                        if (Math.Abs(f_AverageVolt) > 100000)
+                        {
+                            // Try 10 times to get a valid value.
+                            if (L == 10)
+                                throw new Exception("The oscilloscope is busy. It has sent an invalid voltage.");
+                            
+                            Thread.Sleep(100);
+                            continue;
+                        }
+
+                        i_Channel.mf_Analog[s32_SampleIndex] = f_AverageVolt;
+                        i_Channel.mf_Min = Math.Min(i_Channel.mf_Min, f_AverageVolt);
+                        i_Channel.mf_Max = Math.Max(i_Channel.mf_Max, f_AverageVolt);
+                        break;
+                    }                   
+                }
+            }
+            catch (Exception Ex)
+            {
+                if (s32_SampleIndex == 0) // first capture
+                    throw Ex;
+                else
+                    throw new Exception("You must not touch the oscilloscope during the capture process!\n" + Ex.Message);
+            }
+
+            // CalcSampleMinMax() must recalculate i_Channel.mi_SampleMinMax when a new pixel appears on the screen
+            // e.g. ZoomFactor = "/5" --> every 5 samples.
+            if ((s32_SampleIndex % Utils.OsziPanel.DispSteps) == 0)
+                i_DcCapture.ResetSampleMinMax();
         }
     }
 }

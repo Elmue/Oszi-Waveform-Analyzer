@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
+using System.Diagnostics;
 using System.Text;
 using System.Windows.Forms;
 
@@ -16,6 +17,7 @@ using eOperation        = Transfer.Rigol.eOperation;
 using OsziModel         = Transfer.Rigol.OsziModel;
 using OsziConfig        = Transfer.Rigol.OsziConfig;
 using ScpiCombo         = Transfer.SCPI.ScpiCombo;
+using PlatformManager   = Platform.PlatformManager;
 
 namespace Transfer
 {
@@ -26,6 +28,12 @@ namespace Transfer
         eOsziSerie   me_OsziSerie;
         FormTransfer mi_Form;
         WForms.Timer mi_RefreshTimer;
+
+        // ---------- DC Capture ------------
+
+        WForms.Timer mi_CaptureTimer;
+        Capture      mi_DcCapture;
+        int          ms32_CaptureIdx;
 
         public PanelRigol()
         {
@@ -42,13 +50,22 @@ namespace Transfer
             mi_RefreshTimer.Tick += new EventHandler(OnRefreshTimer);
             mi_RefreshTimer.Interval = 500;
 
+            mi_CaptureTimer = new WForms.Timer();
+            mi_CaptureTimer.Tick += new EventHandler(OnCaptureTimer);
+
             lblSerie.Text = Utils.GetDescriptionAttribute(e_OsziSerie);       
             ClearGroupBox();
 
-            if (Utils.RegReadBool(eRegKey.CaptureMemory))
+            if (Utils.RegReadBool(eRegKey.TransferMemory))
                 radioMemory.Checked = true;
             else
                 radioScreen.Checked = true;   
+
+            comboInterval .Text = Utils.RegReadString(eRegKey.CaptureInterval);
+            comboTotalTime.Text = Utils.RegReadString(eRegKey.CaptureTotTime);
+
+            if (comboInterval .SelectedIndex < 0) comboInterval .SelectedIndex = 0;
+            if (comboTotalTime.SelectedIndex < 0) comboTotalTime.SelectedIndex = 0;
         }
 
         // Open the connection to the oscilloscope
@@ -61,7 +78,7 @@ namespace Transfer
 
             LoadGroupBox();
 
-            OnRefreshTimer(null, null);
+            OnRefreshTimer(null, null); // starts the refresh timer
         }
 
         // Close the connection to the oscilloscope
@@ -74,6 +91,7 @@ namespace Transfer
                 mi_Rigol = null;
             }
 
+            mi_CaptureTimer.Stop();
             mi_RefreshTimer.Stop();
             ClearGroupBox();
         }
@@ -104,6 +122,8 @@ namespace Transfer
                     SetLabel(lblTotDuration, true, "NOT READY");
                 else
                     SetLabel(lblTotDuration, false, Utils.FormatTimePico(i_Config.ms64_Duration));
+
+                mi_RefreshTimer.Interval = 500;
             }
             catch (Exception Ex)
             {
@@ -112,11 +132,11 @@ namespace Transfer
                 SetLabel(lblTotDuration,  true, "ERROR");
 
                 // TimeoutException:
-                // This happens when the wrong oscilloscope serie is selected.
-                // The oscillosope does not respond to an unknown SCPI command and a timeout is the result.
-                // Do not start the timer to avoid sending the same wrong command again and again.
+                // This may happen when the wrong oscilloscope serie is selected.
+                // Try again after a longer interval to avoid sending the same wrong command again and again.
+                // This also happens when the scope is busy because the user has moved the signal with the knobs.
                 if (Ex is TimeoutException)
-                    return;
+                    mi_RefreshTimer.Interval = 5000;
             }
 
             mi_RefreshTimer.Start();
@@ -154,7 +174,8 @@ namespace Transfer
             btnSingle   .BackColor = Color.BlanchedAlmond;
             btnForceTrig.BackColor = Color.BlanchedAlmond;
 
-            groupCapture.Enabled = true;
+            groupTransfer .Enabled = true;
+            groupDcCapture.Enabled = true;
         }
 
         void ClearGroupBox()
@@ -166,6 +187,7 @@ namespace Transfer
             lblSampleRate  .Text = "";
             lblSamplePoints.Text = "";
             lblTotDuration .Text = "";
+            lblProgress    .Text = "";
 
             btnReset    .BackColor = SystemColors.Control;
             btnClear    .BackColor = SystemColors.Control;
@@ -175,7 +197,8 @@ namespace Transfer
             btnSingle   .BackColor = SystemColors.Control;
             btnForceTrig.BackColor = SystemColors.Control;
 
-            groupCapture.Enabled = false;
+            groupTransfer .Enabled = false;
+            groupDcCapture.Enabled = false;
         }
 
         // ==========================================================
@@ -222,7 +245,7 @@ namespace Transfer
             {
                 Utils.ShowExceptionBox(mi_Form, Ex);
             }
-            mi_RefreshTimer.Start();
+            OnRefreshTimer(null, null);
 
             Utils.EndBusyOperation(mi_Form);
         }
@@ -240,7 +263,7 @@ namespace Transfer
             if (!Utils.StartBusyOperation(mi_Form))
                 return;
 
-            Utils.RegWriteBool(eRegKey.CaptureMemory, radioMemory.Checked);
+            Utils.RegWriteBool(eRegKey.TransferMemory, radioMemory.Checked);
 
             mi_RefreshTimer.Stop();
             btnTransfer.Text = "Abort";
@@ -248,7 +271,7 @@ namespace Transfer
 
             try
             {
-                Capture i_Capture = mi_Rigol.CaptureAllChannels(radioMemory.Checked);
+                Capture i_Capture = mi_Rigol.TransferAllChannels(radioMemory.Checked);
                 if (i_Capture != null)
                 {
                     i_Capture.mb_Dirty = true; // The user has an unsaved capture
@@ -266,7 +289,7 @@ namespace Transfer
             }
 
             btnTransfer.Text = "Transfer";
-            mi_RefreshTimer.Start();
+            OnRefreshTimer(null, null);
 
             Utils.EndBusyOperation(mi_Form);
         }
@@ -275,6 +298,7 @@ namespace Transfer
 
         /// <summary>
         /// In case of error an oscilloscope which supports :SYSTEM:ERROR? can display additional information (serie DS1000Z)
+        /// FormTransfer calls StartBusyOperation() before calling this function
         /// </summary>
         public void SendManualCommand(String s_Command, TextBox i_TextReponse)
         {
@@ -309,7 +333,113 @@ namespace Transfer
                 i_TextReponse.Text = Ex.Message;
                 i_TextReponse.ForeColor = Color.Red;
             }
-            mi_RefreshTimer.Start();
+            OnRefreshTimer(null, null);
+        }
+
+        // ==========================================================================
+        //                                  Capture
+        // ==========================================================================
+
+        private void btnCapture_Click(object sender, EventArgs e)
+        {
+            if (btnCapture.Text == "Abort")
+            {
+                StopCapture();
+                mi_Form.PrintStatus("Capture aborted", Color.Black);
+                lblProgress.Text = "";
+                return;
+            }
+
+            if (!Utils.StartBusyOperation(mi_Form))
+                return;
+
+            try
+            {
+                Utils.RegWriteString(eRegKey.CaptureInterval, comboInterval .Text);
+                Utils.RegWriteString(eRegKey.CaptureTotTime,  comboTotalTime.Text);
+
+                decimal d_Interval = Utils.ParseInterval(comboInterval .Text); // in seconds
+                decimal d_TotTime  = Utils.ParseInterval(comboTotalTime.Text); // in seconds
+
+                // s64_Interval = 1 second   ... 5 minutes
+                // s64_TotTime  = 10 minutes ... 10 days
+                mi_DcCapture = mi_Rigol.CreateDcCapture(d_Interval, d_TotTime); // throws
+                ms32_CaptureIdx = 0;
+
+                Utils.FormMain.StoreNewCapture(mi_DcCapture);
+
+                comboInterval .Enabled = false;
+                comboTotalTime.Enabled = false;
+                btnCapture.Text = "Abort";
+                mi_Form.PrintStatus("Do not touch the oscilloscope while capturing!", Color.Red);
+
+                mi_CaptureTimer.Interval = (int)(d_Interval * 1000);
+                mi_CaptureTimer.Start();    // FIRST
+                OnCaptureTimer(null, null); // AFTER (stops timer on error)
+            }
+            catch (Exception Ex)
+            {
+                StopCapture();                       // FIRST (stop timer)
+                Utils.ShowExceptionBox(mi_Form, Ex); // NEXT  (show messagebox)
+                lblProgress.Text = "";               // LAST  (remove progress where error occurred)
+            }
+        }
+
+        void OnCaptureTimer(object sender, EventArgs e)
+        {
+            try
+            {
+                // Avoid that the operating system goes into sleep mode while capturing data
+                PlatformManager.Instance.PreventSleep();
+
+                mi_Rigol.AddDcSample(mi_DcCapture, ms32_CaptureIdx); // throws
+                Utils.OsziPanel.RecalculateEverything();
+
+                // Increment only if AddDcSample() did not throw an exception
+                ms32_CaptureIdx ++;
+
+                if (ms32_CaptureIdx == mi_DcCapture.ms32_Samples)
+                {
+                    StopCapture();   // FIRST
+                    mi_Form.Close(); // AFTER
+                    return;
+                }
+
+                String s_Progess = String.Format("{0}%  ({1} samples of {2})", 
+                                                 100 * ms32_CaptureIdx / mi_DcCapture.ms32_Samples,
+                                                 ms32_CaptureIdx, mi_DcCapture.ms32_Samples);
+
+                decimal d_ElapsedMilli = (ms32_CaptureIdx - 1) * mi_CaptureTimer.Interval;
+                if (d_ElapsedMilli > 0)
+                    s_Progess += "  Elapsed: " + Utils.FormatTimePico(d_ElapsedMilli / 1000 * Utils.PICOS_PER_SECOND);
+
+                lblProgress.Text = s_Progess;
+            }
+            catch (Exception Ex)
+            {
+                StopCapture();                       // FIRST (stop timer)
+                Utils.ShowExceptionBox(mi_Form, Ex); // NEXT  (show messagbox)
+                lblProgress.Text = "";               // LAST  (remove progress where error occurred)
+            }
+        }
+
+        void StopCapture()
+        {
+            mi_CaptureTimer.Stop();
+            btnCapture .Text = "DC Capture";
+            comboInterval .Enabled = true;
+            comboTotalTime.Enabled = true;
+
+            if (mi_DcCapture != null)
+            {
+                // If the user aborts capturing --> remove all unused samples that have zero Volt.
+                mi_DcCapture.ms32_Samples = Math.Max(Utils.MIN_VALID_SAMPLES, ms32_CaptureIdx);
+                Utils.FormMain.StoreNewCapture(mi_DcCapture);
+                mi_DcCapture = null;
+            }
+
+            OnRefreshTimer(null, null);
+            Utils.EndBusyOperation(mi_Form);
         }
     }
 }

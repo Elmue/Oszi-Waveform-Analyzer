@@ -68,7 +68,9 @@ namespace OsziWaveformAnalyzer
             DigitalHeight,
             ShowLegend,
             SeparateChannel,
-            CaptureMemory,
+            TransferMemory,
+            CaptureInterval,
+            CaptureTotTime,
             SendCommand,
             ConnectMode,
             ConnectUSB,
@@ -274,18 +276,18 @@ namespace OsziWaveformAnalyzer
         /// </summary>
         public class Channel
         {
-            public String           ms_Name;
+            public String    ms_Name;       // auto-generated name or user-defined name
             // -------------------------------
-            public float[]          mf_Analog;     // analog  channel data (voltage)
-            public Byte[]           mu8_Digital;   // digital channel data (the bytes contain only 0 or 1) (do not use bool which occupies 4 bytes in memory)
+            public float[]   mf_Analog;     // analog  channel data (voltage)
+            public Byte[]    mu8_Digital;   // digital channel data (the bytes contain only 0 or 1) (do not use bool which occupies 4 bytes in memory)
             // -------------------------------
             // The following are assigned in CalcAnalogMinMax()
-            public float            mf_Min;        // minimum analog voltage of all samples
-            public float            mf_Max;        // maximum analog voltage of all samples
+            public float     mf_Min;        // minimum analog voltage of all samples
+            public float     mf_Max;        // maximum analog voltage of all samples
             // -------------------------------
-            public float            mf_ThreshLo;   // low hysteresis threshold voltage for the D/A converter
-            public float            mf_ThreshHi;   // high hysteresis threshold voltage for the D/A converter
-            public bool             mb_Threshold;  // true --> draw the threshold lines in the OsziPanel
+            public float     mf_ThreshLo;   // low  hysteresis threshold voltage for the D/A converter
+            public float     mf_ThreshHi;   // high hysteresis threshold voltage for the D/A converter
+            public bool      mb_Threshold;  // true --> draw the threshold lines in the OsziPanel
             // -------------------------------
             public List<SmplMark>[] mi_MarkRows;   // Mark Row 1: clock marks and decoded bits, Mark Row 2: decoded bytes / ASCII
             
@@ -295,6 +297,11 @@ namespace OsziWaveformAnalyzer
             public int       ms32_ColorIdx;   // A channel has the same color as long as it lives
             public bool      mb_AnalHidden;   // true --> do not draw the analog signal (checkbox is off)
             public SplMinMax mi_SampleMinMax = new SplMinMax();
+
+            // ===================================================
+            //    Used internally for DC Capture
+            // ===================================================
+            public int       ms32_Number;    // the oscilloscope's internal channel number used in SCPI commands like "CHAN1"
 
             public Channel(String s_Name)
             {
@@ -409,7 +416,7 @@ namespace OsziWaveformAnalyzer
 
         public delegate bool delInvokeBool();
 
-        public  const  String     APP_VERSION       = "v2.4"; // displayed in Main Window Title
+        public  const  String     APP_VERSION       = "v2.5"; // displayed in Main Window Title
         public  const  int        MIN_VALID_SAMPLES = 100;    // Error if loaded file contains less samples
         public  const  String     ERR_MIN_SAMPLES   = "The minimum amount of samples is 100.";
         public  const  String     NO_SAMPLES_LOADED = "No samples loaded. Use button 'Capture' or select an Input file.";
@@ -562,7 +569,37 @@ namespace OsziWaveformAnalyzer
         // --------------------------------------------------------------------------
 
         /// <summary>
+        /// Interval = "1 second" or "5 days" --> return interval in seconds
+        /// </summary>
+        public static decimal ParseInterval(String s_Interval)
+        {
+            String[] s_Parts = s_Interval.Split(' ');
+
+            int s32_Interval;
+            if (s_Parts.Length == 2 && int.TryParse(s_Parts[0], out s32_Interval))
+            {
+                switch (s_Parts[1].ToLower())
+                {
+                    case "ms":      return (decimal)s32_Interval / 1000;
+                    case "second":
+                    case "seconds": return s32_Interval;
+                    case "minute":
+                    case "minutes": return s32_Interval * 60;
+                    case "hour":
+                    case "hours":   return s32_Interval * 60 * 60;
+                    case "day":
+                    case "days":    return s32_Interval * 24 * 60 * 60;
+                }
+            }
+                
+            throw new Exception("Invalid interval: " + s_Interval);
+        }
+
+        // --------------------------------
+
+        /// <summary>
         /// Format a time interval given in pico seconds (10E-12 seconds)
+        /// returns "1.2 ms"
         /// </summary>
         public static String FormatTimePico(decimal d_Time)
         {
@@ -589,12 +626,16 @@ namespace OsziWaveformAnalyzer
                 return String.Format("{0}{1:0.###} sec", s_Sign, d_Time).Replace(',', '.');
 
             int s32_Sec  = (int)d_Time;
-            int s32_Min  = s32_Sec / 60;
-            int s32_Hour = s32_Min / 60;
+            int s32_Min  = s32_Sec  / 60;
+            int s32_Hour = s32_Min  / 60;
             if (s32_Hour == 0) // < 1 hour
-                return String.Format("{0}{1:D2}:{2:D2} min",  s_Sign, s32_Min % 60, s32_Sec % 60);
-            else
+                return String.Format("{0}{1:D2}:{2:D2} min", s_Sign, s32_Min, s32_Sec % 60);
+
+            int s32_Day = s32_Hour / 24;
+            if (s32_Day == 0) // < 1 day
                 return String.Format("{0}{1:D2}:{2:D2} hour", s_Sign, s32_Hour, s32_Min % 60);
+
+            return String.Format("{0}{1} days, {2} hours", s_Sign, s32_Day, s32_Hour % 24);
         }
 
         public static String FormatFrequency(decimal d_Frequ)
