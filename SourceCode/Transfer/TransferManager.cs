@@ -182,12 +182,12 @@ namespace Transfer
                 case eOsziSerie.Rigol_1000DE:
                 case eOsziSerie.Rigol_1000Z:
                 case eOsziSerie.Picoscope_3206:
-                    throw new Exception("For " + i_ComboOsziModel.Text + " only CSV file import is implemented.");
+                    throw new Exception("For " + i_ComboOsziModel.Text + " only CSV file import is implemented.\nDid you select the correct Oszi Model?");
 
                 case eOsziSerie.OWON_1022:
                     if (s_FileExt == ".cap") return ExImport.OWON.ParseBinaryFile(s_Path, ref b_Abort);
                     if (s_FileExt == ".bin") return ExImport.OWON.ParseBinaryFile(s_Path, ref b_Abort);
-                    throw new Exception("For " + i_ComboOsziModel.Text + " only CSV, BIN and CAP file import is implemented.");
+                    throw new Exception("For " + i_ComboOsziModel.Text + " only CSV, BIN and CAP file import is implemented.\nDid you select the correct Oszi Model?");
 
                 // TODO: Add Tektronix, Rhode & Schwarz, Siglent, ... which probably use their own proprietary CSV format
 
