@@ -1020,7 +1020,6 @@ namespace Transfer
             i_DcCapture.ms64_SampleDist = (Int64)(d_Interval * Utils.PICOS_PER_SECOND);
             i_DcCapture.ms32_Samples    = (int)(d_TotTime / d_Interval);
             i_DcCapture.ms32_AnalogRes  = mi_FixData.ms32_AnalogRes;
-            i_DcCapture.mb_Dirty        = true;
 
             if (i_Config.ms64_Duration >= i_DcCapture.ms64_SampleDist)
             {

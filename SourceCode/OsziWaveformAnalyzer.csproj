@@ -53,6 +53,7 @@
     <Compile Include="ExImport\BigEndianReader.cs" />
     <Compile Include="ExImport\CsvParser.cs" />
     <Compile Include="ExImport\OsziFile.cs" />
+    <Compile Include="Operations\DecodeUSB.cs" />
     <Compile Include="Operations\Digitizer.cs" />
     <Compile Include="Platform\PlfMono.cs" />
     <Compile Include="Platform\PlatformManager.cs" />
@@ -256,6 +257,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\Oszi.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\USB.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

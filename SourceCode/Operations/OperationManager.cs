@@ -153,6 +153,7 @@ namespace Operations
             mi_Operations.Add(typeof(DecodeSPI));
             mi_Operations.Add(typeof(DecodeI2C));
             mi_Operations.Add(typeof(DecodeCanBus));
+            mi_Operations.Add(typeof(DecodeUSB));
             mi_Operations.Add(typeof(DecodeMagStripe));
             mi_Operations.Add(typeof(DecodeInfrared));
             mi_Operations.Add(typeof(MoreDecoders));
@@ -320,6 +321,7 @@ namespace Operations
             }
             catch (Exception Ex)
             {
+                Utils.EndBusyOperation(null);
                 Utils.ShowExceptionBox(null, Ex);
             }
         }

@@ -182,6 +182,7 @@
         <div>— &nbsp; <a href="#PostPN532_SPI"    class="MenuLink" onClick="ShowMenu(false)">Post Decoder PN532</a></div>
         <div><a href="#DecodeI2C"        class="MenuLink" onClick="ShowMenu(false)">Decode I²C Bus</a></div>
         <div>— &nbsp; <a href="#PostPN532_I2C"    class="MenuLink" onClick="ShowMenu(false)">Post Decoder PN532</a></div>
+        <div><a href="#DecodeUSB"        class="MenuLink" onClick="ShowMenu(false)">Decode USB bus</a></div>
         <div><a href="#DecodeCAN"        class="MenuLink" onClick="ShowMenu(false)">Decode CAN Bus</a></div>
         <div><a href="#DecodeMagStripe"  class="MenuLink" onClick="ShowMenu(false)">Decode Magnetic Stripe Tracks</a></div>
         <div><a href="#DecodeIR"         class="MenuLink" onClick="ShowMenu(false)">Decode Infrared Remote Control</a></div>
@@ -254,6 +255,7 @@
 <li><div><span class="Error">NEW in v2.3</span>: Double clicking an Oszi file does not open a new process (thanks to Peter).</div>
 <li><div><span class="Error">NEW in v2.4</span>: Added CSV import for <b>Picoscope</b> 3206 MSO (thanks to Leonel).</div>
 <li><div><span class="Error">NEW in v2.5</span>: DC Capture allows to capture very slow processes over hours or days.</div>
+<li><div><span class="Error">NEW in v2.6</span>: Decoder for USB Full speed captures.</div>
 </ul>
 
 <a name="Decoders"></a>
@@ -538,6 +540,30 @@
 <p>
 <div>Here you see the PN532 reading an RFID Mifare Desfire card.</div>
 <div>The white lines have been added by the Post Decoder.</div>
+
+<a name="DecodeUSB"></a>
+<h1>Decode USB Bus</h1>
+
+<div>The USB Full Speed decoder analyzes captures from the D+ and D- wires of a USB cable.</div>
+<div>It decodes the USB tokens, detects several errors, verifies the CRC's, and decodes SETUP packets.</div>
+<p>
+<img src="Images/UsbFullspeedOszi.png" width="764" height="415" alt="Oszi Waveform Analyzer - USB Full speed decoder">
+<p>
+<div>Here you see a host IN request for endpoint 1 of the USB device with bus address 3. The devices responds with NAK.</div>
+<p>
+<div><span class="Error">ATTENTION:</span></div>
+<div>When you capture on a USB cable you do not only see the USB traffic with the connected USB device.</div>
+<div>All traffic from the host computer comes from the USB Root Hub on the mainboard or an external USB hub.</div>
+<div>The USB hubs do <b>not filter</b> host requests. If you connect the oscilloscope to the USB cable of the device 3</div>
+<div>you will also see <b>host requests</b> to USB devices with addresses 2, 4, 7,... that are connected to the same hub.</div>
+<div>But you will not see the <b>responses</b> of any other device than device 3. This may be confusing in the beginning.</div>
+<p>
+<img src="Images/UsbFullspeedDevices.png" width="770" height="378" alt="Oszi Waveform Analyzer - USB Full speed decoder">
+<p>
+<div>Oszi Waveform Analyzer detectes automatically to which device you have connected and decodes only traffic with this device.</div>
+<p>
+<img src="Images/UsbFullspeedDecode.png" width="869" height="216" alt="Oszi Waveform Analyzer - USB Full speed decoder">
+<div>Read Part 3 in the excellent <b>USB Tutorial.chm</b> in subfolder <a href="https://github.com/Elmue/Oszi-Waveform-Analyzer/tree/main/Documentation" target="_blank">Documentation</a>.</div>
 
 
 <a name="DecodeCAN"></a>
@@ -974,6 +1000,7 @@ etc....</td></tr>
 <h3>Save File Options</h3>
 <p>
 <img src="Images/SaveOptions.png" width="386" height="123" alt="Oszi Waveform Analyzer - Save File Options">
+<div>A <b>Display Factor</b> of 1 means that one sample corresponds to one pixel on the screen.</div>
 <ul>
 <li><div><b>Oszi File Zip</b>: Save the capture as <b>OSZI</b> file with additional ZIP compression.</div>
 <li><div><b>Oszi File Plain</b>: Save the capture as <b>OSZI</b> file without ZIP compression.</div>

@@ -184,14 +184,17 @@ namespace OsziWaveformAnalyzer
             {
                 if (OsziPanel.CurCapture != null && OsziPanel.CurCapture.mb_Dirty)
                 {
-                    String s_Filename = Path.GetFileName(s_OsziPath);
                     DialogResult e_Result = MessageBox.Show(this, "You have unsaved changes.\n"
-                                          + "Click OK to lose the changes and load the file\n" + s_Filename
+                                          + "Click OK to lose the changes and load the file\n" 
+                                          + Path.GetFileName(s_OsziPath)
                                           + "\nClick Cancel to open the file in another process.", 
                                             "Oszi Waveform Analyer", MessageBoxButtons.OKCancel, MessageBoxIcon.Exclamation);
 
                     if (e_Result == DialogResult.Cancel)
                         return false;
+
+                    OsziPanel.CurCapture.mb_Dirty = false;
+                    UpdateDirty();
                 }
                 OpenCommandlineFile(s_OsziPath);
                 return true;
@@ -226,7 +229,7 @@ namespace OsziWaveformAnalyzer
         protected override void OnClosing(CancelEventArgs e)
         {
  	        base.OnClosing(e);
-            
+           
             if (Utils.IsBusy)
             {
                 e.Cancel = true;
@@ -444,7 +447,7 @@ namespace OsziWaveformAnalyzer
         }
 
         /// <summary>
-        /// Called when the user has delected all Channels of a Capture
+        /// Called when the user has deleted all Channels of a Capture
         /// </summary>
         public void ResetInputFile()
         {
@@ -452,26 +455,45 @@ namespace OsziWaveformAnalyzer
             textFileName.Text = "";
         }
 
+        public bool HasUnsavedChanges()
+        {
+            if (OsziPanel.CurCapture != null && OsziPanel.CurCapture.mb_Dirty)
+            {
+                DialogResult e_Result = MessageBox.Show(this, "You have unsaved changes.\n"
+                                        + "Do you want to lose them and load another capture?", 
+                                          "Oszi Waveform Analyer", MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation);
+
+                if (e_Result == DialogResult.No)
+                    return true;
+
+                OsziPanel.CurCapture.mb_Dirty = false;
+                UpdateDirty();
+            }
+            return false;
+        }
+
         /// <summary>
         /// Read CSV file (very slow) or OSZI file (binary samples)
         /// </summary>
         private void comboInput_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if ((ComboPath)comboInput.SelectedItem == mi_CurInputFile)
+            // After transferring a capture from the oscilloscope the filename is removed from the combobox.
+            if (comboInput.SelectedIndex < 0)
+            {
+                mi_CurInputFile = null;
+                return;
+            }
+
+            // The user has dropped down the combobox and re-selected the same item --> do not load again
+            if (mi_CurInputFile != null && mi_CurInputFile == (ComboPath)comboInput.SelectedItem)
                 return;
             
-            if (mi_CurInputFile != null && OsziPanel.CurCapture != null && OsziPanel.CurCapture.mb_Dirty)
+            if (HasUnsavedChanges())
             {
-                DialogResult e_Result = MessageBox.Show(this, "You have unsaved changes.\n"
-                                        + "Do you want to lose them and open another file?", 
-                                          "Oszi Waveform Analyer", MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation);
-
-                if (e_Result == DialogResult.No)
-                {
-                    comboInput.DroppedDown  = false;
-                    comboInput.SelectedItem = mi_CurInputFile;
-                    return;
-                }
+                // restore previous combo selection
+                comboInput.DroppedDown  = false;
+                comboInput.SelectedItem = mi_CurInputFile;
+                return;
             }
 
             mi_CurInputFile = (ComboPath)comboInput.SelectedItem;
@@ -587,7 +609,10 @@ namespace OsziWaveformAnalyzer
                 comboFactor.SelectedIndex = Math.Max(0, comboFactor.Items.Count - 2);
 
                 if (i_Capture.ms_Path == null) // Capture does not come from a file --> remove file name
+                {
                     comboInput.SelectedIndex = -1;
+                    i_Capture.mb_Dirty = true;
+                }
 
                 // Make trackbars visible after the first loaded samples
                 UpdateTrackbars();

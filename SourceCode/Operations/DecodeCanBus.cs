@@ -552,9 +552,9 @@ namespace Operations
                 mb_BitStuffing  = true; // 5-Bit Stuffing is used until CRC (CAN FD) or until Trailer (CAN Classic)
                 ms32_CurBit     = 0;    // Current bit in ms_BitNames
                 ms32_PrevValue  = -1;
-                ms_BitNames     = null; // Names of all bits of the current state
                 me_State        = eState.Header;
                 mi_Packet       = new CanPacket();
+                ms_BitNames     = null; // Names of all bits of the current state
                 mi_SmplID       = null; // Mark Row 2
                 mi_SmplDLC      = null; // Mark Row 2
                 mi_SmplData     = null; // Mark Row 2
@@ -581,8 +581,8 @@ namespace Operations
                     // sample loop: reads one bit
                     while (true)
                     {
-                        int s32_CurSample = (int)i_Stream.Position - 1; // (Stream points already to next bit)
-                        if (s32_CurSample >= mi_Timing.BitEnd)
+                        int s32_CurSample = (int)i_Stream.Position - 1;
+                        if (s32_CurSample >= mi_Timing.BitEnd) // (Stream points already to next bit)
                             break;
 
                         int s32_NewState = i_Stream.ReadByte();
@@ -604,7 +604,7 @@ namespace Operations
                                 if (s32_CurSample > mi_Timing.SamplePoint) 
                                 {
                                     // Bit change is from the next bit
-                                    mi_Timing.md_BitEnd = (int)s32_CurSample; // loaded into d_BitStart at end of loop
+                                    mi_Timing.md_BitEnd = s32_CurSample; // loaded into d_BitStart at end of loop
                                 }
                                 else 
                                 {
@@ -1098,7 +1098,8 @@ namespace Operations
             RtfBuilder i_Builder = i_RtfDoc.CreateNewBuilder();
 
             i_Builder.AppendText(Color.White, "Packet Flags:\n", FontStyle.Underline);
-            i_Builder.AppendEnum(Color.Lime,              11, Color.White, typeof(ePackFlags));
+            i_Builder.AppendEnum(Color.Lime,        11, Color.White, typeof(ePackFlags));
+            i_Builder.AppendText(Color.White, "Errors:\n",       FontStyle.Underline);
             i_Builder.AppendEnum(Utils.ERROR_COLOR, 11, Color.White, typeof(eError));
 
             i_Builder.AppendText(Color.White, "\n\nDecoded Packets:\n", FontStyle.Underline);
@@ -1110,11 +1111,7 @@ namespace Operations
                 i_Builder.AppendText(Color.Yellow, s_ID + ": ");
 
                 i_Builder.AppendText(Color.Magenta, "[" + i_Pack.ms32_DLC.ToString().PadLeft(s32_DlcDigits) + "] ");
-
-                foreach (Byte u8_Byte in i_Pack.mi_Data)
-                {
-                    i_Builder.AppendFormat(Color.White, "{0:X2} ", u8_Byte);
-                }
+                i_Builder.AppendText(Color.White, Utils.ByteListToHex(i_Pack.mi_Data));
                 i_Builder.AppendText("  ");
 
                 if (i_Pack.me_Flags > 0)

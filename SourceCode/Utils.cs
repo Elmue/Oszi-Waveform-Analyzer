@@ -214,13 +214,23 @@ namespace OsziWaveformAnalyzer
                 }
             }
 
+            public Channel FindChannel(String s_Name)
+            {
+                foreach (Channel i_Channel in mi_Channels)
+                {
+                    if (i_Channel.ms_Name == s_Name)
+                        return i_Channel;
+                }
+                return null;
+            }
+
             /// <summary>
             /// returns an existing channel with the given name or inserts a new channel with the given name 
             /// behind the last channel in i_InsertAfter
             /// </summary>
             public Channel FindOrCreateChannel(String s_Name, params Channel[] i_InsertAfter)
             {
-                foreach(Channel i_Channel in mi_Channels)
+                foreach (Channel i_Channel in mi_Channels)
                 {
                     if (i_Channel.ms_Name == s_Name)
                         return i_Channel;
@@ -366,6 +376,19 @@ namespace OsziWaveformAnalyzer
                 mi_PenEnd = mi_PenStart;
             }
 
+            public SmplMark Clone(String s_NewText = null)
+            {
+                SmplMark i_Clone = new SmplMark(me_Mark, ms32_FirstSample, ms32_LastSample, ms_Text, ms32_Value);
+                i_Clone.mi_TxtBrush = mi_TxtBrush;
+                i_Clone.mi_PenStart = mi_PenStart;
+                i_Clone.mi_PenEnd   = mi_PenEnd;
+
+                if (s_NewText != null)
+                    i_Clone.ms_Text = s_NewText;
+
+                return i_Clone;
+            }
+
             /// <summary>
             /// for sorting
             /// </summary>
@@ -416,7 +439,7 @@ namespace OsziWaveformAnalyzer
 
         public delegate bool delInvokeBool();
 
-        public  const  String     APP_VERSION       = "v2.5"; // displayed in Main Window Title
+        public  const  String     APP_VERSION       = "v2.6"; // displayed in Main Window Title
         public  const  int        MIN_VALID_SAMPLES = 100;    // Error if loaded file contains less samples
         public  const  String     ERR_MIN_SAMPLES   = "The minimum amount of samples is 100.";
         public  const  String     NO_SAMPLES_LOADED = "No samples loaded. Use button 'Capture' or select an Input file.";
@@ -807,6 +830,17 @@ namespace OsziWaveformAnalyzer
             return i_Bytes;
         }
 
+        public static String ByteListToHex(List<Byte> i_Data)
+        {
+            StringBuilder i_Hex = new StringBuilder();
+            foreach (Byte u8_Data in i_Data)
+            {
+                if (i_Hex.Length > 0) i_Hex.Append(" ");
+                i_Hex.Append(u8_Data.ToString("X2"));
+            }
+            return i_Hex.ToString();
+        }
+
         // --------------------------------------------------------------------------
 
         /// <summary>
@@ -836,7 +870,6 @@ namespace OsziWaveformAnalyzer
             }
 
             i_Form.Cursor = Cursors.WaitCursor;
-
             mb_Busy = true;
             return true;
         }

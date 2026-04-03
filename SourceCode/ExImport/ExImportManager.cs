@@ -194,8 +194,10 @@ namespace ExImport
         /// </summary>
         public String GetSavePath()
         {
-            // Cut any ".oszi" that the user may have pasted
-            mi_TextFileName.Text = Path.GetFileNameWithoutExtension(mi_TextFileName.Text);
+            // Cut ".oszi" that the user may have pasted
+            mi_TextFileName.Text = mi_TextFileName.Text.Trim();
+            if (mi_TextFileName.Text.ToLower().EndsWith(".oszi"))
+                mi_TextFileName.Text = mi_TextFileName.Text.Substring(0, mi_TextFileName.Text.Length - 5);
 
             if (mi_TextFileName.Text.Length < 5)
             {
