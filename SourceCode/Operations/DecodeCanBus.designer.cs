@@ -30,10 +30,9 @@
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(DecodeCanBus));
             this.label1 = new System.Windows.Forms.Label();
-            this.comboBaudStd = new System.Windows.Forms.ComboBox();
+            this.comboBaudNom = new System.Windows.Forms.ComboBox();
             this.btnDecode = new System.Windows.Forms.Button();
             this.comboBaudFD = new System.Windows.Forms.ComboBox();
-            this.label2 = new System.Windows.Forms.Label();
             this.radioIdleHigh = new System.Windows.Forms.RadioButton();
             this.radioIdleLow = new System.Windows.Forms.RadioButton();
             this.label3 = new System.Windows.Forms.Label();
@@ -46,21 +45,23 @@
             this.label8 = new System.Windows.Forms.Label();
             this.label9 = new System.Windows.Forms.Label();
             this.linkHelp = new System.Windows.Forms.LinkLabel();
+            this.checkCanFD = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(12, 85);
+            this.label1.Location = new System.Drawing.Point(30, 85);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(53, 13);
+            this.label1.Size = new System.Drawing.Size(48, 13);
             this.label1.TabIndex = 0;
-            this.label1.Text = "Standard:";
+            this.label1.Text = "Nominal:";
+            this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
-            // comboBaudStd
+            // comboBaudNom
             // 
-            this.comboBaudStd.FormattingEnabled = true;
-            this.comboBaudStd.Items.AddRange(new object[] {
+            this.comboBaudNom.FormattingEnabled = true;
+            this.comboBaudNom.Items.AddRange(new object[] {
             "1 M",
             "800 k",
             "750 k",
@@ -72,16 +73,16 @@
             "50 k",
             "20 k",
             "10 k"});
-            this.comboBaudStd.Location = new System.Drawing.Point(71, 82);
-            this.comboBaudStd.Name = "comboBaudStd";
-            this.comboBaudStd.Size = new System.Drawing.Size(67, 21);
-            this.comboBaudStd.TabIndex = 1;
+            this.comboBaudNom.Location = new System.Drawing.Point(84, 82);
+            this.comboBaudNom.Name = "comboBaudNom";
+            this.comboBaudNom.Size = new System.Drawing.Size(67, 21);
+            this.comboBaudNom.TabIndex = 1;
             // 
             // btnDecode
             // 
             this.btnDecode.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.btnDecode.ForeColor = System.Drawing.Color.Black;
-            this.btnDecode.Location = new System.Drawing.Point(71, 188);
+            this.btnDecode.Location = new System.Drawing.Point(82, 188);
             this.btnDecode.Name = "btnDecode";
             this.btnDecode.Size = new System.Drawing.Size(75, 23);
             this.btnDecode.TabIndex = 100;
@@ -91,6 +92,7 @@
             // 
             // comboBaudFD
             // 
+            this.comboBaudFD.Enabled = false;
             this.comboBaudFD.FormattingEnabled = true;
             this.comboBaudFD.Items.AddRange(new object[] {
             "5 M",
@@ -99,19 +101,10 @@
             "800 k",
             "750 k",
             "500 k"});
-            this.comboBaudFD.Location = new System.Drawing.Point(71, 109);
+            this.comboBaudFD.Location = new System.Drawing.Point(84, 109);
             this.comboBaudFD.Name = "comboBaudFD";
             this.comboBaudFD.Size = new System.Drawing.Size(67, 21);
             this.comboBaudFD.TabIndex = 10;
-            // 
-            // label2
-            // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(12, 112);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(49, 13);
-            this.label2.TabIndex = 102;
-            this.label2.Text = "CAN FD:";
             // 
             // radioIdleHigh
             // 
@@ -138,7 +131,7 @@
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(69, 65);
+            this.label3.Location = new System.Drawing.Point(82, 65);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(53, 13);
             this.label3.TabIndex = 106;
@@ -147,7 +140,7 @@
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(153, 65);
+            this.label4.Location = new System.Drawing.Point(166, 65);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(68, 13);
             this.label4.TabIndex = 107;
@@ -155,7 +148,7 @@
             // 
             // textSmplStd
             // 
-            this.textSmplStd.Location = new System.Drawing.Point(155, 83);
+            this.textSmplStd.Location = new System.Drawing.Point(168, 83);
             this.textSmplStd.Name = "textSmplStd";
             this.textSmplStd.Size = new System.Drawing.Size(52, 20);
             this.textSmplStd.TabIndex = 2;
@@ -163,7 +156,7 @@
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(209, 84);
+            this.label5.Location = new System.Drawing.Point(222, 84);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(15, 13);
             this.label5.TabIndex = 109;
@@ -172,7 +165,7 @@
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(209, 110);
+            this.label6.Location = new System.Drawing.Point(222, 110);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(15, 13);
             this.label6.TabIndex = 111;
@@ -180,7 +173,8 @@
             // 
             // textSmplFD
             // 
-            this.textSmplFD.Location = new System.Drawing.Point(155, 109);
+            this.textSmplFD.Enabled = false;
+            this.textSmplFD.Location = new System.Drawing.Point(168, 109);
             this.textSmplFD.Name = "textSmplFD";
             this.textSmplFD.Size = new System.Drawing.Size(52, 20);
             this.textSmplFD.TabIndex = 11;
@@ -220,7 +214,7 @@
             this.linkHelp.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.linkHelp.AutoSize = true;
             this.linkHelp.LinkColor = System.Drawing.Color.Lime;
-            this.linkHelp.Location = new System.Drawing.Point(156, 192);
+            this.linkHelp.Location = new System.Drawing.Point(167, 192);
             this.linkHelp.Name = "linkHelp";
             this.linkHelp.Size = new System.Drawing.Size(59, 13);
             this.linkHelp.TabIndex = 115;
@@ -228,12 +222,24 @@
             this.linkHelp.Text = "Show Help";
             this.linkHelp.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkHelp_LinkClicked);
             // 
+            // checkCanFD
+            // 
+            this.checkCanFD.AutoSize = true;
+            this.checkCanFD.Location = new System.Drawing.Point(14, 111);
+            this.checkCanFD.Name = "checkCanFD";
+            this.checkCanFD.Size = new System.Drawing.Size(68, 17);
+            this.checkCanFD.TabIndex = 5;
+            this.checkCanFD.Text = "CAN FD:";
+            this.checkCanFD.UseVisualStyleBackColor = true;
+            this.checkCanFD.CheckedChanged += new System.EventHandler(this.checkCanFD_CheckedChanged);
+            // 
             // DecodeCanBus
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.DimGray;
-            this.ClientSize = new System.Drawing.Size(266, 223);
+            this.ClientSize = new System.Drawing.Size(268, 223);
+            this.Controls.Add(this.checkCanFD);
             this.Controls.Add(this.linkHelp);
             this.Controls.Add(this.label9);
             this.Controls.Add(this.label8);
@@ -247,9 +253,8 @@
             this.Controls.Add(this.radioIdleLow);
             this.Controls.Add(this.radioIdleHigh);
             this.Controls.Add(this.comboBaudFD);
-            this.Controls.Add(this.label2);
             this.Controls.Add(this.btnDecode);
-            this.Controls.Add(this.comboBaudStd);
+            this.Controls.Add(this.comboBaudNom);
             this.Controls.Add(this.label1);
             this.ForeColor = System.Drawing.Color.White;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
@@ -268,10 +273,9 @@
         #endregion
 
         private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.ComboBox comboBaudStd;
+        private System.Windows.Forms.ComboBox comboBaudNom;
         private System.Windows.Forms.Button btnDecode;
         private System.Windows.Forms.ComboBox comboBaudFD;
-        private System.Windows.Forms.Label label2;
         private System.Windows.Forms.RadioButton radioIdleHigh;
         private System.Windows.Forms.RadioButton radioIdleLow;
         private System.Windows.Forms.Label label3;
@@ -284,6 +288,7 @@
         private System.Windows.Forms.Label label8;
         private System.Windows.Forms.Label label9;
         private System.Windows.Forms.LinkLabel linkHelp;
+        private System.Windows.Forms.CheckBox checkCanFD;
 
     }
 }

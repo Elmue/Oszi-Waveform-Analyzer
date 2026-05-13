@@ -109,6 +109,10 @@ namespace Operations
             
             [Description("Invalid Stuff Bit Count or Parity (CAN FD)")]
             STC       = 0x20,
+
+            // The user did not enable the checkbox "CAN FD" although a CAN FD sample was detected
+            [Description("CAN FD detected but checkbox not checked")]
+            CanFD     = 0x40,
         }
 
         enum eState
@@ -145,6 +149,7 @@ namespace Operations
 
             private double md_BitStart;     //   0%   Sample == start of bit
             private double md_SteadyStart;  //  20%   Sample --> after this sample a bit status change is not allowed, otherwise eError.Baudrate
+            private double md_CenterPoint;  //  50%   Sample --> in the middle of the bit
             private double md_SamplePoint;  //  87.5% Sample
             private double md_SteadyEnd;    //  80%   Sample --> after this sample a bit status change is allowed again
             public  double md_BitEnd;       // 100%   Sample == end of bit
@@ -153,6 +158,7 @@ namespace Operations
 
             public int BitStart    { get { return (int)(md_BitStart    + 0.5); }}
             public int SteadyStart { get { return (int)(md_SteadyStart + 0.5); }}
+            public int CenterPoint { get { return (int)(md_CenterPoint + 0.5); }}
             public int SamplePoint { get { return (int)(md_SamplePoint + 0.5); }}
             public int SteadyEnd   { get { return (int)(md_SteadyEnd   + 0.5); }}
             public int BitEnd      { get { return (int)(md_BitEnd      + 0.5); }}
@@ -179,6 +185,7 @@ namespace Operations
                 // the A/D conversion was not made with extreme precision or insufficient samples are available.
                 md_BitStart    = d_BitStart;
                 md_SteadyStart = d_BitStart + md_SmplPerBit * 0.20;           // 20 %
+                md_CenterPoint = d_BitStart + md_SmplPerBit * 0.50;           // 50 %
                 md_SamplePoint = d_BitStart + md_SmplPerBit * md_PointFactor; // 87.5 %
                 md_SteadyEnd   = d_BitStart + md_SmplPerBit * 0.80;           // 80 %
                 md_BitEnd      = d_BitStart + md_SmplPerBit;
@@ -359,9 +366,10 @@ namespace Operations
         /// </summary>
         static DecodeCanBus()
         {
-            mi_DemoFiles.Add("CAN Classic ISO 15765 500k Baud 11 bit.oszi", "500 k");
-            mi_DemoFiles.Add("CAN Classic SAE J1939 500k Baud 29 bit.oszi", "500 k");
-            mi_DemoFiles.Add("CAN FD Test 500k & 2M Baud 11 + 29 bit.oszi", "2 M");
+            //                                                              Nominal  FD      Nom    FD
+            mi_DemoFiles.Add("CAN Classic ISO 15765 500k Baud 11 bit.oszi", "500 k = 500 k = 50.0 = 50.0");
+            mi_DemoFiles.Add("CAN Classic SAE J1939 500k Baud 29 bit.oszi", "500 k = 500 k = 50.0 = 50.0");
+            mi_DemoFiles.Add("CAN FD Test 500k & 2M Baud 11 + 29 bit.oszi", "500 k = 2 M = 87.5 = 75.0");
 
             foreach (String s_DemoFile in mi_DemoFiles.Keys)
             {
@@ -371,6 +379,7 @@ namespace Operations
 
         eState    me_State;        // state machine
         bool      mb_BitStuffing;  // Bit stuffing is turned off at the end of the frame
+        bool      mb_FinishStuff;  // Finish bit stuffing at the next bit (which may be a stuff bit)
         int       ms32_SmplPerBit; // highest Samples per bit (FD baudrate)
         int       ms32_PrevValue;  // The value of the previous bit (0 or 1)
         int       ms32_CurBit;     // Current bit index in ms_BitNames
@@ -422,22 +431,32 @@ namespace Operations
         {
  	        base.OnLoad(e);
 
-            comboBaudStd.Text = Utils.RegReadString(eRegKey.CanBaudStd,     "500 k");
-            comboBaudFD .Text = Utils.RegReadString(eRegKey.CanBaudFD,      "500 k");
-            textSmplStd .Text = Utils.RegReadString(eRegKey.CanSplPointStd, "87.5");
-            textSmplFD  .Text = Utils.RegReadString(eRegKey.CanSplPointFD,  "75.0");
+            comboBaudNom .Text    = Utils.RegReadString(eRegKey.CanBaudStd,     "500 k");
+            comboBaudFD  .Text    = Utils.RegReadString(eRegKey.CanBaudFD,      "2 M");
+            textSmplStd  .Text    = Utils.RegReadString(eRegKey.CanSplPointStd, "50.0");
+            textSmplFD   .Text    = Utils.RegReadString(eRegKey.CanSplPointFD,  "75.0");
+            radioIdleHigh.Checked = Utils.RegReadBool  (eRegKey.CanIdleHigh,    true);
+            checkCanFD   .Checked = Utils.RegReadBool  (eRegKey.CanEnableFD,    false);
 
-            // Load the correct settings for the demo files
-            String s_BaudFD;
+            String s_Params;
             if (OsziPanel.CurCapture.ms_Path != null && 
-                mi_DemoFiles.TryGetValue(Path.GetFileName(OsziPanel.CurCapture.ms_Path), out s_BaudFD))
+                mi_DemoFiles.TryGetValue(Path.GetFileName(OsziPanel.CurCapture.ms_Path), out s_Params))
             {
-                comboBaudStd.Text = "500 k";
-                comboBaudFD .Text = s_BaudFD;
-                textSmplStd .Text = "87.5";
-                textSmplFD  .Text = "75.0";
+                // Load the settings for the demo files.
+                String[] s_Split = s_Params.Split('=');
+                comboBaudNom.Text = s_Split[0].Trim();
+                comboBaudFD .Text = s_Split[1].Trim();
+                textSmplStd .Text = s_Split[2].Trim();
+                textSmplFD  .Text = s_Split[3].Trim();
                 radioIdleHigh.Checked = true;
+                checkCanFD   .Checked = comboBaudNom.Text != comboBaudFD.Text;
             }
+        }
+
+        private void checkCanFD_CheckedChanged(object sender, EventArgs e)
+        {
+            comboBaudFD.Enabled = checkCanFD.Checked;
+            textSmplFD .Enabled = checkCanFD.Checked;
         }
 
         private void linkHelp_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
@@ -447,19 +466,37 @@ namespace Operations
 
         private void btnDecode_Click(object sender, EventArgs e)
         {
-            double d_PointStd, d_PointFD;
-            double d_SplBitStd = GetSamplesPerBit(comboBaudStd, eRegKey.CanBaudStd, textSmplStd, eRegKey.CanSplPointStd, out d_PointStd);
+            // If CAN FD is not used -> set nominal samplepoint = 50% to avoid wrong detection in case of low signal quality.
+            // The samplepoint is only relevant for CAN FD. Read the manual!
+            if (!checkCanFD.Checked)
+                textSmplStd.Text = "50.0";
+
+            double d_PointStd;
+            double d_SplBitStd = GetSamplesPerBit(comboBaudNom, eRegKey.CanBaudStd, textSmplStd, eRegKey.CanSplPointStd, out d_PointStd);
             if (d_SplBitStd == 0.0)
                 return;
-            double d_SplBitFD  = GetSamplesPerBit(comboBaudFD,  eRegKey.CanBaudFD,  textSmplFD,  eRegKey.CanSplPointFD,  out d_PointFD);
-            if (d_SplBitFD == 0.0)
-                return;
 
-            if (d_SplBitFD > d_SplBitStd)
+            double d_SplBitFD, d_PointFD;
+            if (checkCanFD.Checked)
             {
-                MessageBox.Show(this, "The CAN FD baudrate cannot be lower than the CAN Standard baudrate.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
+                d_SplBitFD = GetSamplesPerBit(comboBaudFD, eRegKey.CanBaudFD, textSmplFD, eRegKey.CanSplPointFD, out d_PointFD);
+                if (d_SplBitFD == 0.0)
+                    return;
+
+                if (d_SplBitFD > d_SplBitStd)
+                {
+                    MessageBox.Show(this, "The CAN FD baudrate cannot be lower than the CAN Standard baudrate.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
             }
+            else
+            {
+                d_SplBitFD = d_SplBitStd;
+                d_PointFD  = d_PointStd;
+            }
+
+            Utils.RegWriteBool(eRegKey.CanEnableFD, checkCanFD   .Checked);
+            Utils.RegWriteBool(eRegKey.CanIdleHigh, radioIdleHigh.Checked);
 
             // Used to adjust Display Factor
             ms32_SmplPerBit = (int)(d_SplBitFD + 0.5);
@@ -471,7 +508,8 @@ namespace Operations
         /// <summary>
         /// returns 0 on error
         /// </summary>
-        double GetSamplesPerBit(ComboBox i_ComboBaud, eRegKey e_RegBaud, TextBox i_TextSmpl, eRegKey e_RegSmpl, out double d_SamplePoint)
+        double GetSamplesPerBit(ComboBox i_ComboBaud, eRegKey e_RegBaud, 
+                                TextBox  i_TextSmpl,  eRegKey e_RegSmpl, out double d_SamplePoint)
         {
             d_SamplePoint = 0;
 
@@ -502,6 +540,11 @@ namespace Operations
                 MessageBox.Show(this, "Enter a valid sample point between 50 % and 90 %", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return 0.0;
             }
+
+            // round the samplepoint to one digit after the comma
+            d_SamplePoint   = Math.Round(d_SamplePoint, 1);
+            i_TextSmpl.Text = d_SamplePoint.ToString("F1"); // XX.X
+            Utils.RegWriteString(e_RegSmpl, i_TextSmpl.Text);
 
             return d_SamplesPerBit;
         }
@@ -537,7 +580,7 @@ namespace Operations
                 {
                     s32_State = i_Stream.ReadByte();
                     if (s32_State < 0)
-                        return i_Packets.ToArray(); // end of stream
+                        goto _Exit; // end of stream
                 }
 
                 // --------- Find SOF bit (dominant) ----------
@@ -546,11 +589,12 @@ namespace Operations
                 {
                     s32_State = i_Stream.ReadByte();
                     if (s32_State < 0)
-                        return i_Packets.ToArray(); // end of stream
+                        goto _Exit; // end of stream
                 }
 
-                mb_BitStuffing  = true; // 5-Bit Stuffing is used until CRC (CAN FD) or until Trailer (CAN Classic)
-                ms32_CurBit     = 0;    // Current bit in ms_BitNames
+                mb_BitStuffing  = true;  // 5-Bit Stuffing is used until CRC (CAN FD) or until Trailer (CAN Classic)
+                mb_FinishStuff  = false;
+                ms32_CurBit     = 0;     // Current bit in ms_BitNames
                 ms32_PrevValue  = -1;
                 me_State        = eState.Header;
                 mi_Packet       = new CanPacket();
@@ -587,30 +631,30 @@ namespace Operations
 
                         int s32_NewState = i_Stream.ReadByte();
                         if (s32_NewState < 0)
-                            return i_Packets.ToArray(); // end of stream
+                            goto _Exit; // end of stream
 
                         // ---------------- State Change -----------------
 
                         if (s32_State != s32_NewState) // data has changed
                         {
                             s32_State = s32_NewState;
-                            b_TimingError = s32_CurSample > mi_Timing.SteadyStart && s32_CurSample < mi_Timing.SteadyEnd;
+                            if (s32_CurSample > mi_Timing.SteadyStart && s32_CurSample < mi_Timing.SteadyEnd)
+                                b_TimingError = true;
 
                             // See "Bosch CAN FD - Timing Requirements.pdf" in subfolder "Documentation" page 04-3
                             // CAN nodes synchronize on received edges from recessive to dominant.
                             // The dominant bit after FDF is hard synchronization.
                             if (s32_NewState == 0) // 0 = dominant
                             {
-                                if (s32_CurSample > mi_Timing.SamplePoint) 
+                                // Bit change is from the next bit
+                                if (s32_CurSample > mi_Timing.CenterPoint) 
                                 {
-                                    // Bit change is from the next bit
-                                    mi_Timing.md_BitEnd = s32_CurSample; // loaded into d_BitStart at end of loop
+                                    mi_Timing.md_BitEnd = s32_CurSample + 1; // loaded into d_BitStart at end of loop
                                 }
-                                else 
+                                else // Bit change is from the current bit 
                                 {
-                                    // Bit change is from the current bit
-                                    mi_Timing.md_BitEnd     = (int)(s32_CurSample + mi_Timing.md_SmplPerBit + 0.5);
-                                    i_Mark.ms32_FirstSample = s32_CurSample;
+                                    mi_Timing.CalcSamples(s32_CurSample + 1);
+                                    i_Mark.ms32_FirstSample = mi_Timing.BitStart;
                                 }
                             }
                         }
@@ -648,6 +692,12 @@ namespace Operations
                                 else                             s32_StuffCount = 1;
 
                                 s32_StuffState = s32_State;
+
+                                // Turn off bit stuffing AFTER the next bit is not a stuff bit.
+                                // If the classic CRC field ends with 5 zeroes, the stuff bit comes
+                                // after the CRC has already been verified in ProcessCRC()
+                                if (mb_FinishStuff)
+                                    mb_BitStuffing = false;
                             }
 
                             // The following functions must be called exactly at the samplepoint
@@ -671,7 +721,7 @@ namespace Operations
                                         break;
                                 }
                             }
-                        }
+                        } // CurSample == SamplePoint
                     } // sample loop
 
                     if (b_TimingError)
@@ -682,9 +732,9 @@ namespace Operations
                                          
                     // correct last sample for bits BRS and DL1
                     i_Mark.ms32_LastSample   = mi_Timing.BitEnd; 
-                    mi_Packet.ms32_EndSample = i_Mark.ms32_LastSample;
+                    mi_Packet.ms32_EndSample = mi_Timing.BitEnd; 
                     mi_Packet.mi_Marks.Add(i_Mark); 
-                    i_MarkRow1.Add(i_Mark);
+                    i_MarkRow1        .Add(i_Mark);
 
                     // In case of error --> detect end of frame after 7 idle bits
                     if (mi_Packet.HasError && s32_IdleCount > 6)
@@ -696,6 +746,16 @@ namespace Operations
 
                 i_Packets.Add(mi_Packet);
             } // packet loop
+
+         _Exit:
+
+            // Adjust the end samples of all Marks in Row 2 to the end samples of Mark Row 1.
+            // This is needed after resynchronization to the bit stream.
+            foreach (SmplMark i_Mark2 in i_MarkRow2)
+            {
+                i_Mark2.AdjustEndSample();
+            }
+            return i_Packets.ToArray();
         }
 
         // =============================================================================================================
@@ -725,6 +785,9 @@ namespace Operations
                     mi_Packet.me_Flags |= ePackFlags.BRS; 
                     mi_Timing.SwitchBaudrate(true);  // switch to High baudrate
                     i_Mark.mi_PenEnd = Pens.Magenta; // display the calculated end of the BRS bit in magenta
+
+                    if (!checkCanFD.Checked)
+                        mi_Packet.me_Error |= eError.CanFD;
                 } 
                                 
                 if (s_Name == "IDE" || s_Name == "FDF")
@@ -745,8 +808,8 @@ namespace Operations
                     mi_Packet.ms32_ID <<= 1;
                     mi_Packet.ms32_ID |= i_Mark.ms32_Value;
 
-                    if (mi_SmplID == null) mi_SmplID = new SmplMark(eMark.Text, i_Mark.ms32_FirstSample);
-                    mi_SmplID.ms32_LastSample = i_Mark.ms32_LastSample;                   
+                    if (mi_SmplID == null) mi_SmplID = new SmplMark(eMark.Text, i_Mark.ms32_FirstSample);          
+                    mi_SmplID.mi_LastChildMark = i_Mark;
                     break;
 
                 case "DLC": 
@@ -755,7 +818,7 @@ namespace Operations
                     mi_Packet.ms32_DLC |= i_Mark.ms32_Value;
 
                     if (mi_SmplDLC == null) mi_SmplDLC = new SmplMark(eMark.Text, i_Mark.ms32_FirstSample);
-                    mi_SmplDLC.ms32_LastSample = i_Mark.ms32_LastSample;
+                    mi_SmplDLC.mi_LastChildMark = i_Mark;
                     break;
             }
 
@@ -837,10 +900,10 @@ namespace Operations
                 mi_SmplData = new SmplMark(eMark.Text, i_Mark.ms32_FirstSample);
             }
 
-            mi_SmplData.ms32_LastSample = i_Mark.ms32_LastSample;
-
             i_Mark.ms_Text     = ms_BitNames[ms32_CurBit++];
             i_Mark.mi_TxtBrush = BRUSH_DATA;
+
+            mi_SmplData.mi_LastChildMark = i_Mark;
 
             mi_SmplData.ms32_Value <<= 1;
             mi_SmplData.ms32_Value |= i_Mark.ms32_Value;
@@ -863,7 +926,7 @@ namespace Operations
 
                     // CAN FD turns off 5-Bit Stuffing after Data phase
                     if (mi_Packet.IsCanFD)
-                        mb_BitStuffing = false;
+                        mb_FinishStuff = true;
                 }
             }
         }
@@ -912,7 +975,7 @@ namespace Operations
             }
 
             if (mi_SmplCRC != null)
-                mi_SmplCRC.ms32_LastSample = i_Mark.ms32_LastSample;
+                mi_SmplCRC.mi_LastChildMark = i_Mark;
 
             // last CRC bit reached ?
             if (ms32_CurBit < ms_BitNames.Length)
@@ -932,16 +995,19 @@ namespace Operations
 
             foreach (SmplMark i_Prev in mi_Packet.mi_Marks)
             {
+                // CAN classic: abort CRC calculation before first CRC bit
+                if (i_Prev.ms_Text == "CRC")
+                    break;
+
+                if (i_SmplSTC != null)
+                    i_SmplSTC.mi_LastChildMark = i_Prev;
+
                 if (i_Prev.ms_Text == "SB")
                 {
                     s32_CountSB ++;
                     if (!mi_Packet.IsCanFD)
                         continue; // CAN classic -> 5-Bit stuff bits are not included in CRC
                 }
-
-                // CAN classic: abort CRC calculation before first CRC bit
-                if (i_Prev.ms_Text == "CRC")
-                    break;
 
                 // ignore FSB bits for CRC
                 if (i_Prev.ms_Text != "FSB")
@@ -961,8 +1027,6 @@ namespace Operations
                 // process Parity bit
                 if (i_Prev.ms_Text == "PAR")
                 {
-                    i_SmplSTC.ms32_LastSample = i_Prev.ms32_LastSample;
-
                     s32_ParityBit = i_Prev.ms32_Value;
                     i_Prev.mi_TxtBrush = (s32_ParityBit == s32_ParityCalc) ? Brushes.Lime : Utils.ERROR_BRUSH;
 
@@ -1026,7 +1090,7 @@ namespace Operations
             me_State ++;
 
             // CAN Classic turns off 5-Bit Stuffing after CRC phase
-            mb_BitStuffing = false;
+            mb_FinishStuff = true;
         }
 
         // =============================================================================================================
@@ -1097,9 +1161,14 @@ namespace Operations
             RtfDocument i_RtfDoc = new RtfDocument(Color.White);
             RtfBuilder i_Builder = i_RtfDoc.CreateNewBuilder();
 
-            i_Builder.AppendText(Color.White, "Packet Flags:\n", FontStyle.Underline);
+            i_Builder.AppendText(Color.Gray, "Baudrate Nominal: " + comboBaudNom.Text + ", Samplepoint: " + textSmplStd.Text + "%\n");
+            
+            if (checkCanFD.Checked)
+                i_Builder.AppendText(Color.Gray, "Baudrate Data: " + comboBaudFD .Text + ", Samplepoint: " + textSmplFD .Text + "%\n");
+
+            i_Builder.AppendText(Color.White, "\nPacket Flags:\n", FontStyle.Underline);
             i_Builder.AppendEnum(Color.Lime,        11, Color.White, typeof(ePackFlags));
-            i_Builder.AppendText(Color.White, "Errors:\n",       FontStyle.Underline);
+            i_Builder.AppendText(Color.White, "Errors:\n",         FontStyle.Underline);
             i_Builder.AppendEnum(Utils.ERROR_COLOR, 11, Color.White, typeof(eError));
 
             i_Builder.AppendText(Color.White, "\n\nDecoded Packets:\n", FontStyle.Underline);

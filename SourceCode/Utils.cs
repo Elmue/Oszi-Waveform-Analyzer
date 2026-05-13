@@ -92,6 +92,8 @@ namespace OsziWaveformAnalyzer
             CanBaudFD,
             CanSplPointStd,
             CanSplPointFD,
+            CanEnableFD,
+            CanIdleHigh,
         }
 
         public enum eMark : byte
@@ -345,16 +347,17 @@ namespace OsziWaveformAnalyzer
         public class SmplMark : IComparable
         {
             // required for drawing on OsziPanel
-            public eMark  me_Mark;
-            public int    ms32_FirstSample; 
-            public int    ms32_LastSample;   
-            public String ms_Text;        // optional text
-            public Brush  mi_TxtBrush;    // red / white
-            public Pen    mi_PenStart;    // for vertical line (red / white)
-            public Pen    mi_PenEnd;      // for vertical line (magenta / white)
-            
+            public eMark    me_Mark;
+            public int      ms32_FirstSample; 
+            public int      ms32_LastSample;   
+            public String   ms_Text;        // optional text
+            public Brush    mi_TxtBrush;    // red / white
+            public Pen      mi_PenStart;    // for vertical line (red / white)
+            public Pen      mi_PenEnd;      // for vertical line (magenta / white)
+           
             // used internally by some decoders
-            public int    ms32_Value;
+            public int      ms32_Value;
+            public SmplMark mi_LastChildMark;
 
             public SmplMark(eMark e_Mark, int s32_SampleA, int s32_SampleB = -1, String s_Text = null, int s32_Value = 0)
             {
@@ -387,6 +390,19 @@ namespace OsziWaveformAnalyzer
                     i_Clone.ms_Text = s_NewText;
 
                 return i_Clone;
+            }
+
+            /// <summary>
+            /// The end sample of a bit in Mark Row 1 may change after resynchronization to the bit stream.
+            /// Store the last Mark of Row 1 in mi_LastChildMark of the corresponding Mark of Row 2.
+            /// Adjust ms32_LastSample in Mark Row 2 to the end of the last Mark in Row 1.
+            /// </summary>
+            public void AdjustEndSample()
+            {
+                if (mi_LastChildMark != null)
+                    ms32_LastSample = mi_LastChildMark.ms32_LastSample;
+                else
+                    Debug.Assert(false, "Last Child not set."); // This may happen due to a bug or corrupt data
             }
 
             /// <summary>
@@ -439,7 +455,7 @@ namespace OsziWaveformAnalyzer
 
         public delegate bool delInvokeBool();
 
-        public  const  String     APP_VERSION       = "v2.6"; // displayed in Main Window Title
+        public  const  String     APP_VERSION       = "v2.7"; // displayed in Main Window Title
         public  const  int        MIN_VALID_SAMPLES = 100;    // Error if loaded file contains less samples
         public  const  String     ERR_MIN_SAMPLES   = "The minimum amount of samples is 100.";
         public  const  String     NO_SAMPLES_LOADED = "No samples loaded. Use button 'Capture' or select an Input file.";
