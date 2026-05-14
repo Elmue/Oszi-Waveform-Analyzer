@@ -37,7 +37,7 @@
             this.radioIdleLow = new System.Windows.Forms.RadioButton();
             this.label3 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
-            this.textSmplStd = new System.Windows.Forms.TextBox();
+            this.textSmplNom = new System.Windows.Forms.TextBox();
             this.label5 = new System.Windows.Forms.Label();
             this.label6 = new System.Windows.Forms.Label();
             this.textSmplFD = new System.Windows.Forms.TextBox();
@@ -146,12 +146,13 @@
             this.label4.TabIndex = 107;
             this.label4.Text = "Samplepoint:";
             // 
-            // textSmplStd
+            // textSmplNom
             // 
-            this.textSmplStd.Location = new System.Drawing.Point(168, 83);
-            this.textSmplStd.Name = "textSmplStd";
-            this.textSmplStd.Size = new System.Drawing.Size(52, 20);
-            this.textSmplStd.TabIndex = 2;
+            this.textSmplNom.Enabled = false;
+            this.textSmplNom.Location = new System.Drawing.Point(168, 83);
+            this.textSmplNom.Name = "textSmplNom";
+            this.textSmplNom.Size = new System.Drawing.Size(52, 20);
+            this.textSmplNom.TabIndex = 2;
             // 
             // label5
             // 
@@ -185,9 +186,9 @@
             this.label7.ForeColor = System.Drawing.Color.Yellow;
             this.label7.Location = new System.Drawing.Point(11, 10);
             this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(246, 13);
+            this.label7.Size = new System.Drawing.Size(195, 13);
             this.label7.TabIndex = 112;
-            this.label7.Text = "For CAN classic you can set a samplepoint of 50 %";
+            this.label7.Text = "For CAN classic the samplepoint is 50 %";
             // 
             // label8
             // 
@@ -195,9 +196,9 @@
             this.label8.ForeColor = System.Drawing.Color.Yellow;
             this.label8.Location = new System.Drawing.Point(11, 26);
             this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(240, 13);
+            this.label8.Size = new System.Drawing.Size(224, 13);
             this.label8.TabIndex = 113;
-            this.label8.Text = "But for CAN FD with 2 baudrates it is fundamental";
+            this.label8.Text = "For CAN FD with 2 baudrates it is fundamental";
             // 
             // label9
             // 
@@ -247,7 +248,7 @@
             this.Controls.Add(this.label6);
             this.Controls.Add(this.textSmplFD);
             this.Controls.Add(this.label5);
-            this.Controls.Add(this.textSmplStd);
+            this.Controls.Add(this.textSmplNom);
             this.Controls.Add(this.label4);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.radioIdleLow);
@@ -280,7 +281,7 @@
         private System.Windows.Forms.RadioButton radioIdleLow;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.TextBox textSmplStd;
+        private System.Windows.Forms.TextBox textSmplNom;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.TextBox textSmplFD;

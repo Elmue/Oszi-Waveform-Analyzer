@@ -433,7 +433,7 @@ namespace Operations
 
             comboBaudNom .Text    = Utils.RegReadString(eRegKey.CanBaudStd,     "500 k");
             comboBaudFD  .Text    = Utils.RegReadString(eRegKey.CanBaudFD,      "2 M");
-            textSmplStd  .Text    = Utils.RegReadString(eRegKey.CanSplPointStd, "50.0");
+            textSmplNom  .Text    = Utils.RegReadString(eRegKey.CanSplPointStd, "50.0");
             textSmplFD   .Text    = Utils.RegReadString(eRegKey.CanSplPointFD,  "75.0");
             radioIdleHigh.Checked = Utils.RegReadBool  (eRegKey.CanIdleHigh,    true);
             checkCanFD   .Checked = Utils.RegReadBool  (eRegKey.CanEnableFD,    false);
@@ -446,7 +446,7 @@ namespace Operations
                 String[] s_Split = s_Params.Split('=');
                 comboBaudNom.Text = s_Split[0].Trim();
                 comboBaudFD .Text = s_Split[1].Trim();
-                textSmplStd .Text = s_Split[2].Trim();
+                textSmplNom .Text = s_Split[2].Trim();
                 textSmplFD  .Text = s_Split[3].Trim();
                 radioIdleHigh.Checked = true;
                 checkCanFD   .Checked = comboBaudNom.Text != comboBaudFD.Text;
@@ -456,6 +456,7 @@ namespace Operations
         private void checkCanFD_CheckedChanged(object sender, EventArgs e)
         {
             comboBaudFD.Enabled = checkCanFD.Checked;
+            textSmplNom.Enabled = checkCanFD.Checked;
             textSmplFD .Enabled = checkCanFD.Checked;
         }
 
@@ -469,10 +470,10 @@ namespace Operations
             // If CAN FD is not used -> set nominal samplepoint = 50% to avoid wrong detection in case of low signal quality.
             // The samplepoint is only relevant for CAN FD. Read the manual!
             if (!checkCanFD.Checked)
-                textSmplStd.Text = "50.0";
+                textSmplNom.Text = "50.0";
 
             double d_PointStd;
-            double d_SplBitStd = GetSamplesPerBit(comboBaudNom, eRegKey.CanBaudStd, textSmplStd, eRegKey.CanSplPointStd, out d_PointStd);
+            double d_SplBitStd = GetSamplesPerBit(comboBaudNom, eRegKey.CanBaudStd, textSmplNom, eRegKey.CanSplPointStd, out d_PointStd);
             if (d_SplBitStd == 0.0)
                 return;
 
@@ -1161,7 +1162,7 @@ namespace Operations
             RtfDocument i_RtfDoc = new RtfDocument(Color.White);
             RtfBuilder i_Builder = i_RtfDoc.CreateNewBuilder();
 
-            i_Builder.AppendText(Color.Gray, "Baudrate Nominal: " + comboBaudNom.Text + ", Samplepoint: " + textSmplStd.Text + "%\n");
+            i_Builder.AppendText(Color.Gray, "Baudrate Nominal: " + comboBaudNom.Text + ", Samplepoint: " + textSmplNom.Text + "%\n");
             
             if (checkCanFD.Checked)
                 i_Builder.AppendText(Color.Gray, "Baudrate Data: " + comboBaudFD .Text + ", Samplepoint: " + textSmplFD .Text + "%\n");
