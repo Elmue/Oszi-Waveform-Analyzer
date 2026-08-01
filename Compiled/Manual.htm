@@ -10,23 +10,29 @@
     <meta http-equiv="MSThemeCompatible" content="Yes">
     <meta http-equiv="Language" content="en">
     <meta name="Author" content="ElmüSoft">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="index, follow">
     <style>
-    body          { font-family:Verdana; font-size:13px; background-color:#F9F8F1; }
+    body          { font-family:Verdana; font-size:13px; background-color:#F9F8F1; position:relative; max-width:100%; overflow-x:hidden; }
     h1            { font-size:25px; font-weight:bold; background-color:#007799; color:white; padding:8px 8px 8px 16px; margin-top:35px; border:solid 2px #77CCDD; border-radius: 10px; }
+    h2            { font-size:20px; font-weight:bold; background-color:#007799; color:white; padding:5px 3px 5px 8px; margin-top:10px; border:solid 1px #77CCDD; border-radius:10px; width:75%; }
     h3            { font-size:17px; font-weight:bold; text-decoration:underline; color:#007799; margin-top:22px; margin-bottom:5px; }
     h4            { font-size:13px; font-weight:bold; text-decoration:underline; color:#007799; margin-top:12px; margin-bottom:2px; }
     hr            { border: 3px solid #007799; border-radius: 5px; }
+    ul, ol        { padding-inline-start:25px; }
     li            { padding-top:1px; padding-bottom:1px;}
-    img           { max-width: 100%; height: auto;}
-    code          { color:blue; }
+    code          { color:brown; font-size:14px; }
+/* Modern browsers read this ":root". IE8 completely ignores it, otherwise it would cripple all images. */
+:root img     { max-width: 100%; height: auto;}
     a:hover       { color: #AA00FF; }
+    pre           { border:1px solid #AAAAAA; padding:2px; font-family:"Courier New", Courier, monospace; font-size:13px; background-color:#FFFFDD; width:690px; }
+    .Pre          { border:1px solid #AAAAAA; padding:2px; font-family:"Courier New", Courier, monospace; font-size:13px; background-color:white; }
+    .WhiteSpace   { white-space:pre; nowrap; }
     .Link:hover   { color: #AA00FF; }
     .Link, a      { color: blue; cursor:pointer; font-family:Verdana; font-size:12px; font-weight:bold; text-decoration:none; }
-    .DivFullSize  { position:absolute; visibility:hidden; background-color:#DDDDDD; padding:0px 10px 10px 10px; border:1px solid black; box-shadow: 5px 5px 5px #777; }
+    .DivFullSize  { position:absolute; max-width:100%; display:none; background-color:#DDDDDD; padding:0px 10px 10px 10px; border:1px solid black; box-shadow:5px 5px 5px #777; overflow-x:auto; -webkit-overflow-scrolling:touch; }
     .Warning      { border:2px solid red; padding:5px; font-weight:bold; }
-    .Pre          { border:1px solid #AAAAAA; padding:2px; font-family:Courier New; background-color:white; }
+    .WarningTable { border:2px solid red; padding:5px; font-weight:bold; border-radius:10px; }
     .Error        { color:red; font-weight:bold; }
     .TblImage     { border:1px solid #CCCCCC; border-spacing: 0px; margin-top:15px; margin-bottom:15px; }
     .TblImage td  { padding:0px; }
@@ -41,10 +47,12 @@
     .DarkRed      { color:#AA0000; }
     .Blue         { color:blue; }
     .Magenta      { color:magenta; }
+    .Cyan         { color:#0088AA; }
     .Gray         { color:#888888; }
     .Time         { color:#775533; }
     .Big          { font-size:15px; font-weight:bold; }
     .Img          { border:1px solid #CCCCCC; }
+    .Photo        { border:2px solid #555555; }
     .LineTop      { border-top:1px solid #CCCCCC; }
     .LineBot      { border-bottom:1px solid #CCCCCC; }
     .Translate    { background-color: #007799; border:2px solid #77CCDD; border-radius: 10px; }
@@ -53,19 +61,32 @@
     .Assembler b  { color:blue; }
     .Assembler code  { color:#DD8800; }
     .Over         { text-decoration:overline; }
+    .OrangeSquare { background-color:#FFCC99; font-weight:bold; border-width:1px; border-style:solid; border-color:black; padding:1px; line-height:22px; }
+
     .DataTable    { background-color:#333333; margin-top:10px; margin-bottom:10px; }
     .DataTable th { background-color:#777777; color:#FFFFFF; padding:1px 5px 2px 5px; font-weight:bold; }
     .DataTable tr { background-color:#F8F8F8; }
     .DataTable td { background-color:#FFFFF8; padding:3px; }
     .DataTable h3 { font-size:17px; font-weight:bold; text-decoration:underline; color:#007799; margin-top:8px; margin-bottom:0px; }
+    
     .PopupMenu { position:fixed; top:0px; right:0px; border:2px solid #77CCDD; z-index: 999; padding:5px; background-color:#007799; color:white; font-weight:bold; font-family:Arial,Helvetica,Sans-serif; font-size:13px; cursor:default; }
-    .MenuLink { color:white; text-decoration:none; }
+    .Menu      { color:white; text-decoration:none; font-family:Verdana; line-height:1.1; }
+    .MenuLink  { color:white; text-decoration:none; font-family:Verdana; }
     .MenuLink:hover { color:#CCCCFF; }
+    
+    .TableContainer { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+
+    .ContentTable { width:100%; }
+    @media (min-width:1000px)
+    {
+        .ContentTable { width:60%; }
+    }
     </style>
+
     <script>
     var LastLink = null;
     var LastDiv  = null;
-	var LastTop  = 0;
+    var LastTop  = 0;
     var LastUrl  = null;
     function ShowFullSize(Link, ImgFile)
     {
@@ -81,14 +102,18 @@
         var Img = document.getElementById("ImgFullSize");
         var Scr = document.getElementById("DivScrollable");
 
+        var Top = (window.pageYOffset || // best option, but not available on IE 8
+                   document.documentElement.scrollTop || // quirks mode
+                   document.body.scrollTop) + 15;        // strict mode
+
+        Div.style.top  = Top + "px";
+        Div.style.left = "20px";
+        Div.style.display = "block";
+
+        // AFTER Div
         Scr.style.overflow = "auto";
         Scr.scrollLeft = 0;
         Scr.scrollTop  = 0;
-
-        var Top = Math.max(document.body.scrollTop, document.documentElement.scrollTop) + 15;
-        Div.style.top  = Top + "px";
-        Div.style.left = "20px";
-        Div.style.visibility = "visible";
 
         Link.innerHTML = "Hide Full Size";
         LastLink = Link;
@@ -97,8 +122,13 @@
         Img.style.maxWidth = "none";
         Img.onload = function()
         {
-            var MaxWidth  = window.innerWidth  - 80;
-            var MaxHeight = window.innerHeight - 80;
+            var MaxWidth  = (window.innerWidth || // best option, but not available on IE 8
+                             document.documentElement.clientWidth ||  // quirks mode
+                             document.body.clientWidth)  - 80;        // strict mode
+
+            var MaxHeight = (window.innerHeight || // best option, but not available on IE 8
+                             document.documentElement.clientHeight || // quirks mode
+                             document.body.clientHeight) - 80;        // strict mode
 
             var ImgWidth  = Img.width  + 4;
             var ImgHeight = Img.height + 4;
@@ -121,7 +151,7 @@
     {
         if (LastLink != null)
         {
-            LastDiv.style.visibility = "hidden";
+            LastDiv.style.display = "none";
             LastLink.innerHTML = "Show Full Size";
             LastDiv  = null;
             LastLink = null;
@@ -131,29 +161,36 @@
 
     function ShowMenu(bShow)
     {
-        MenuHead = document.getElementById("MenuHead");
-        MenuCont = document.getElementById("MenuContent");
-        MenuHead.style.display = bShow ? "none"  : "block";
-        MenuCont.style.display = bShow ? "block" : "none";
-    }
+        var MenuHead = document.getElementById("MenuHead");
+        var MenuCont = document.getElementById("MenuContent");
 
-    try
-    {
-        window.addEventListener('scroll', function(e)
+        if (MenuHead != null && MenuCont != null)
         {
-			var Top = Math.max(document.body.scrollTop, document.documentElement.scrollTop)
-			if (Math.abs(LastTop - Top) > 50) // Workaround for buggy Firefox 79
-			{
-                if (LastUrl == window.location.href)
-                    HideFullSize(); // also hide menu
-
-				LastTop = Top;
-                LastUrl = window.location.href;
-			}
-        } );
+            MenuHead.style.display = bShow ? "none"  : "block";
+            MenuCont.style.display = bShow ? "block" : "none";
+        }
     }
-    catch (ex)
-    {}
+
+    function onScrollCallback(e)
+    {
+        var Top = (window.pageYOffset || // best option, but not available on IE 8
+                   document.documentElement.scrollTop || // quirks mode
+                   document.body.scrollTop);             // strict mode
+
+        if (Math.abs(LastTop - Top) > 50) // Workaround for buggy Firefox 79
+        {
+            if (LastUrl == window.location.href)
+                HideFullSize(); // also hide menu
+
+            LastTop = Top;
+            LastUrl = window.location.href;
+        }
+    }
+
+    if (window.addEventListener) // Modern browsers
+        window.addEventListener('scroll', onScrollCallback, false);
+    else if (window.attachEvent) // Internet Explorer 8
+        window.attachEvent('onscroll', onScrollCallback);
     </script>
 </head>
 <body background="Images/Bkgnd.jpg">
@@ -165,7 +202,7 @@
 </div>
 <div id="MenuTop" class="PopupMenu" >
     <div id="MenuHead" style="display:none;" onMouseover="ShowMenu(true)">Menu</div>
-    <div id="MenuContent">
+    <div id="MenuContent" class="Menu">
         <div><a href="#Features"         class="MenuLink" onClick="ShowMenu(false)">Features</a></div>
         <div><a href="#Decoders"         class="MenuLink" onClick="ShowMenu(false)">Implemented Decoders</a></div>
         <div><a href="#DemoFiles"        class="MenuLink" onClick="ShowMenu(false)">Demo Files</a></div>
@@ -888,17 +925,19 @@
 <p>
 <div>The <b>Rigol DS1000DE serie</b> stores the <span class="Blue">timestamp</span> in the first column (with rounding errors):</div>
 <p>
-<table class="Pre">
-<tr><td><span class="Red">Time,X(CH2),</span><br>
-<span class="Red">Second,Volt,</span><br>
-<span class="Blue">-2.4000157e-04</span>,<span class="Green">-0.00000e+00</span>,<br>
-<span class="Blue">-2.3600156e-04</span>,<span class="Green">-4.00000e-02</span>,<br>
-<span class="Blue">-2.3200156e-04</span>,<span class="Green">-0.00000e+00</span>,<br>
-<span class="Blue">-2.2800156e-04</span>,<span class="Green">-4.00000e-02</span>,<br>
-<span class="Blue">-2.2400156e-04</span>,<span class="Green">-4.00000e-02</span>,<br>
-<span class="Blue">-2.2000156e-04</span>,<span class="Green">4.00000e-02</span>,<br>
-etc....</td></tr>
-</table>
+<div class="TableContainer">
+    <table class="Pre WhiteSpace" cellspacing=0 cellpadding=0>
+    <tr><td><span class="Red">Time,X(CH2),</span></td></tr>
+    <tr><td><span class="Red">Second,Volt,</span></td></tr>
+    <tr><td><span class="Blue">-2.4000157e-04</span>,<span class="Green">-0.00000e+00</span>,</td></tr>
+    <tr><td><span class="Blue">-2.3600156e-04</span>,<span class="Green">-4.00000e-02</span>,</td></tr>
+    <tr><td><span class="Blue">-2.3200156e-04</span>,<span class="Green">-0.00000e+00</span>,</td></tr>
+    <tr><td><span class="Blue">-2.2800156e-04</span>,<span class="Green">-4.00000e-02</span>,</td></tr>
+    <tr><td><span class="Blue">-2.2400156e-04</span>,<span class="Green">-4.00000e-02</span>,</td></tr>
+    <tr><td><span class="Blue">-2.2000156e-04</span>,<span class="Green">4.00000e-02</span>,</td></tr>
+    <tr><td>etc....</td></tr>
+    </table>
+</div>
 <p>
 <div>This is not an intelligent format because in each sample they need 15 ASCII characters for the timestamp.</div>
 <div>With 1 Megasamples they store <b>15 Megabyte</b> only for the useless timestamps.</div>
@@ -909,17 +948,19 @@ etc....</td></tr>
 <p>
 <div>And the <b>Rigol DS1000Z serie</b> stores a completely <b>useless</b> <span class="Blue"> counter</span> in the first column:</div>
 <p>
-<table class="Pre">
-<tr><td><span class="Red">X,CH1,Start,Increment,</span><br>
-<span class="Red">Sequence,Volt,-1.144000e-03,2.000000e-06</span><br>
-<span class="Blue">0</span>,<span class="Green">4.00e-02</span>,<br>
-<span class="Blue">1</span>,<span class="Green">-1.20e-01</span>,<br>
-<span class="Blue">2</span>,<span class="Green">-1.20e-01</span>,<br>
-<span class="Blue">3</span>,<span class="Green">4.00e-02</span>,<br>
-<span class="Blue">4</span>,<span class="Green">4.00e-02</span>,<br>
-<span class="Blue">5</span>,<span class="Green">-1.20e-01</span>,<br>
-etc....</td></tr>
-</table>
+<div class="TableContainer">
+    <table class="Pre WhiteSpace" cellspacing=0 cellpadding=0>
+    <tr><td><span class="Red">X,CH1,Start,Increment,</span></td></tr>
+    <tr><td><span class="Red">Sequence,Volt,-1.144000e-03,2.000000e-06</span></td></tr>
+    <tr><td><span class="Blue">0</span>,<span class="Green">4.00e-02</span>,</td></tr>
+    <tr><td><span class="Blue">1</span>,<span class="Green">-1.20e-01</span>,</td></tr>
+    <tr><td><span class="Blue">2</span>,<span class="Green">-1.20e-01</span>,</td></tr>
+    <tr><td><span class="Blue">3</span>,<span class="Green">4.00e-02</span>,</td></tr>
+    <tr><td><span class="Blue">4</span>,<span class="Green">4.00e-02</span>,</td></tr>
+    <tr><td><span class="Blue">5</span>,<span class="Green">-1.20e-01</span>,</td></tr>
+    <tr><td>etc....</td></tr>
+    </table>
+</div>
 <p>
 <div>The format of the first two rows is completely different than in the DS1000DE and - obviously - undocumented.</div>
 <div>I found that the last value in the second row is the time distance between two samples in seconds.</div>
@@ -1056,6 +1097,7 @@ etc....</td></tr>
 <div>Please send me an <b>email</b> if you want to support this project. May be someone is already working on your task.</div>
 
 <p>
+<div class="TableContainer">
 <form action="https://netcult.ch/elmue/Download.php" method="get" target="_blank">
 <input type="hidden" name="Action"  value="Download">
 <input type="hidden" name="Program" value="Oszi-Waveform-Analyzer">
@@ -1064,7 +1106,7 @@ etc....</td></tr>
 </td></tr>
 </table>
 </form>
-
+</div>
 
 <a name="BuyRigol"></a>
 <h1>Should I buy a Rigol Oscilloscope?</h1>
