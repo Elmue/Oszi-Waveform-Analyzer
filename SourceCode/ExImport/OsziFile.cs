@@ -50,6 +50,7 @@ using Capture           = OsziWaveformAnalyzer.Utils.Capture;
 using Channel           = OsziWaveformAnalyzer.Utils.Channel;
 using SmplMark          = OsziWaveformAnalyzer.Utils.SmplMark;
 using eMark             = OsziWaveformAnalyzer.Utils.eMark;
+using eComboImg         = OsziWaveformAnalyzer.ComboBoxEx.eComboImg;
 
 namespace ExImport
 {
@@ -119,13 +120,19 @@ namespace ExImport
         const UInt32 OSZI_DIGITAL_RLE  = 0x79B50A22;
         const UInt32 OSZI_DIGITAL_MASK = 0x92F475E0;
 
+        // It does not make sense to store more than 16 bits in an OSZI file.
+        // The vertical resolution of the monitor cannot even display 16 bits (65536 steps)
+        // Storing more than 16 bits would only produce unnecessary huge files.
+        const int MIN_ANAL_RES =  7; // Minimum analog resolution = 128 steps
+        const int MAX_ANAL_RES = 16; // Maximum analog resolution = 65536 steps
+
         static int ms32_StatusTick; // for progress display in statusbar
 
         /// <summary>
         /// b_ZIP = true      --> write a ZIPed file (smaller file, but read/write is slower)
         /// s32_SaveSteps = 5 --> save every fifth sample in i_Capture and skip the others (user wants to reduce file size).
         /// </summary>
-        public static String Save(Capture i_Capture, String s_Path, bool b_ZIP, int s32_SaveSteps)
+        public static String Save(Capture i_Capture, String s_Path, bool b_ZIP, int s32_SaveSteps, bool b_Shrink8Bit)
         {
             if (!Utils.CheckChannelNames())
                 return null;
@@ -141,12 +148,12 @@ namespace ExImport
 
                     using (GZipStream i_ZipStream = new GZipStream(i_FileStream, CompressionMode.Compress))
                     {
-                        s32_SavedSamples = SaveToStream(i_Capture, i_ZipStream, s32_SaveSteps);
+                        s32_SavedSamples = SaveToStream(i_Capture, i_ZipStream, s32_SaveSteps, b_Shrink8Bit);
                     }
                 }
                 else // plain OSZI file
                 {
-                    s32_SavedSamples = SaveToStream(i_Capture, i_FileStream, s32_SaveSteps);
+                    s32_SavedSamples = SaveToStream(i_Capture, i_FileStream, s32_SaveSteps, b_Shrink8Bit);
                 }
             }
 
@@ -157,10 +164,13 @@ namespace ExImport
             return s32_SavedSamples.ToString("N0") + " samples"; // for status display
         }
 
-        static int SaveToStream(Capture i_Capture, Stream i_Stream, int s32_SaveSteps)
+        static int SaveToStream(Capture i_Capture, Stream i_Stream, int s32_SaveSteps, bool b_Shrink8Bit)
         {
-            Debug.Assert(i_Capture.ms32_AnalogRes >= Utils.MIN_ANAL_RES && i_Capture.ms32_AnalogRes <= Utils.MAX_ANAL_RES, 
-                         "Programming Error: ms32_AnalogRes must ALWAYS have a valid value (even if only digital channels are used)");
+            Debug.Assert(i_Capture.ms32_AnalogRes >= MIN_ANAL_RES, 
+                         "Programming Error: ms32_AnalogRes must ALWAYS have a valid value (even if only digital channels are saved)");
+
+            Debug.Assert(i_Capture.ms32_AnalogRes <= 24, 
+                         "Programming Error: A Capture cannot have more than 24 bit resolution which is the maximum of a float variable (Channel.mf_Analog)");
 
             List<Channel> i_Analog  = new List<Channel>();
             List<Channel> i_Digital = new List<Channel>();
@@ -180,11 +190,14 @@ namespace ExImport
             {
                 // ---------------- Write Header -----------------
 
+                int s32_AnalogRes = Math.Min(i_Capture.ms32_AnalogRes, MAX_ANAL_RES);
+                if (b_Shrink8Bit) s32_AnalogRes = Math.Min(s32_AnalogRes, 8);
+
                 i_Writer.Write(OSZI_PLAIN_MAGIC);
                 i_Writer.Write(OSZI_FILE_VERSION);
                 i_Writer.Write(s32_SaveSamples);
                 i_Writer.Write(s64_Samplerate); // in picoseconds
-                i_Writer.Write(i_Capture.ms32_AnalogRes);
+                i_Writer.Write(s32_AnalogRes);
                 i_Writer.Write(i_Analog .Count);
                 i_Writer.Write(i_Digital.Count);
 
@@ -229,7 +242,7 @@ namespace ExImport
                 // ALWAYS write all analog channels FIRST!
                 foreach (Channel i_Channel in i_Analog)
                 {
-                    WriteAnalog(i_Channel, i_Writer, i_Capture.ms32_AnalogRes, s32_SaveSamples, s32_SaveSteps);
+                    WriteAnalog(i_Channel, i_Writer, s32_AnalogRes, s32_SaveSamples, s32_SaveSteps);
                 }
 
                 // ------------ Write Digital Channels ------------
@@ -267,10 +280,22 @@ namespace ExImport
 
         // -----------------------------------------------------------
 
+        public static bool IsInputFile(String s_Extension, ref eComboImg e_Image)
+        {
+            switch (s_Extension)
+            {
+                case ".oszi":
+                    e_Image = eComboImg.OSZI;
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         /// <summary>
         /// See comment for SaveOsziFile()
         /// </summary>
-        public static Capture Load(String s_Path, ref bool b_Abort)
+        public static Capture LoadFile(String s_Path, ref bool b_Abort)
         {
             using (FileStream i_FileStream = new FileStream(s_Path, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
@@ -317,8 +342,8 @@ namespace ExImport
                     s32_DigiChannels <  0  || 
                     s32_TotChannels ==  0  || 
                     s32_TotChannels > 255  || 
-                    s32_AnalogRes   < Utils.MIN_ANAL_RES ||
-                    s32_AnalogRes   > Utils.MAX_ANAL_RES)
+                    s32_AnalogRes   < MIN_ANAL_RES ||
+                    s32_AnalogRes   > MAX_ANAL_RES)
                     throw new Exception("The OSZI file is corrupt"); 
 
                 foreach (Byte u8_Index in u8_Order)
@@ -752,7 +777,7 @@ namespace ExImport
                 int    s32_Samples = 7651;
                 Random i_Random    = new Random(14);
 
-                for (int s32_Bits=Utils.MIN_ANAL_RES; s32_Bits<=Utils.MAX_ANAL_RES; s32_Bits++)
+                for (int s32_Bits = MIN_ANAL_RES; s32_Bits <= MAX_ANAL_RES; s32_Bits++)
                 {
                     int s32_Maximum = (1 << s32_Bits) - 1;
 
@@ -948,7 +973,7 @@ namespace ExImport
 
         /// <summary>
         /// Create a Capture that contains an analog and digital channel with marks.
-        /// The High time is 100 samples, the Low time is 100, 101, 102, 103,... samples to check rounding in OsziPanel.
+        /// The High time is 100 samples, the Low time is 100, 101, 102, 103,... samples to check rounding in PanelOszi.
         /// </summary>
         public static Capture SelftestCreateTestCapture()
         {          

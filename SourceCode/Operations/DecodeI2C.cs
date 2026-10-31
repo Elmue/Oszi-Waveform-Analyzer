@@ -51,7 +51,7 @@ using IOperation        = Operations.OperationManager.IOperation;
 using RtfDocument       = OsziWaveformAnalyzer.RtfDocument;
 using RtfBuilder        = OsziWaveformAnalyzer.RtfBuilder;
 using Utils             = OsziWaveformAnalyzer.Utils;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 using Capture           = OsziWaveformAnalyzer.Utils.Capture;
 using Channel           = OsziWaveformAnalyzer.Utils.Channel;
 using eRegKey           = OsziWaveformAnalyzer.Utils.eRegKey;
@@ -196,7 +196,7 @@ namespace Operations
         public void GetMenuItems(Channel i_Channel, bool b_Analog, List<GraphMenuItem> i_Items)
         {
             // At least 2 digital channels must exist for SPI
-            if (i_Channel == null || b_Analog || OsziPanel.CurCapture.ms32_DigitalCount < 2)
+            if (i_Channel == null || b_Analog || Utils.CurCapture.ms32_DigitalCount < 2)
                 return; 
 
             GraphMenuItem i_Item = new GraphMenuItem();
@@ -213,7 +213,7 @@ namespace Operations
             mi_SCL = null;
             mi_SDA = null;
 
-            foreach (Channel i_Chan in OsziPanel.CurCapture.mi_Channels)
+            foreach (Channel i_Chan in Utils.CurCapture.mi_Channels)
             {
                 if (i_Chan.mu8_Digital == null)
                     continue;
@@ -244,8 +244,8 @@ namespace Operations
             }
 
             String s_Chip;
-            if (OsziPanel.CurCapture.ms_Path == null ||
-                !mi_DemoFiles.TryGetValue(Path.GetFileName(OsziPanel.CurCapture.ms_Path), out s_Chip))
+            if (Utils.CurCapture.ms_Path == null ||
+                !mi_DemoFiles.TryGetValue(Path.GetFileName(Utils.CurCapture.ms_Path), out s_Chip))
                 s_Chip = Utils.RegReadString(eRegKey.I2C_Chip);
 
             lblChip.Text = "";
@@ -284,10 +284,10 @@ namespace Operations
             catch (Exception Ex)
             {
                 Utils.ShowExceptionBox(this, Ex);
+                Utils.PanelOszi.RecalculateEverything();
             }
             Cursor = Cursors.Arrow;
 
-            Utils.OsziPanel.RecalculateEverything();
             DialogResult = DialogResult.OK;
         }
 
@@ -315,7 +315,7 @@ namespace Operations
 
             Byte u8_LastSCL = mi_SCL.mu8_Digital[0];
             Byte u8_LastSDA = mi_SDA.mu8_Digital[0];
-            for (int S=1; S<OsziPanel.CurCapture.ms32_Samples; S++)
+            for (int S=1; S<Utils.CurCapture.ms32_Samples; S++)
             {
                 Byte u8_SCL = mi_SCL.mu8_Digital[S];
                 Byte u8_SDA = mi_SDA.mu8_Digital[S];
@@ -581,7 +581,7 @@ namespace Operations
                     {
                         case eData.Start:
                             i_Builder.AppendNewLineOnce(); // if preceeded by a Stop condition a NewLine has already been output
-                            i_Builder.AppendTimestampLine(i_I2CPacket.ms32_StartSample, i_I2CPacket.ms32_EndSample, true);
+                            i_Builder.AppendTimestamp(true, i_I2CPacket.ms32_StartSample, i_I2CPacket.ms32_EndSample);
                             i_Builder.AppendText(Color.Lime, "< ");
                             break;
 
@@ -624,7 +624,7 @@ namespace Operations
                 i_Builder.AppendLine(Utils.ERROR_COLOR, "Nothing detected");
 
             // Show RTF and switch to tab "Decoder"
-            Utils.FormMain.ShowAnalysisResult(i_RtfDoc, ms32_SmplPerBit); 
+            Utils.FormMain.ShowAnalysisResult(i_RtfDoc, ms32_SmplPerBit, "I2C Bus Decoder Result"); 
         }
     }
 }

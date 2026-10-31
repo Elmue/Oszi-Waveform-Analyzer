@@ -44,7 +44,7 @@ using System.Windows.Forms;
 
 using OperationManager  = Operations.OperationManager;
 using Utils             = OsziWaveformAnalyzer.Utils;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 using IOperation        = Operations.OperationManager.IOperation;
 using Capture           = OsziWaveformAnalyzer.Utils.Capture;
 using Channel           = OsziWaveformAnalyzer.Utils.Channel;
@@ -59,13 +59,13 @@ namespace Operations
         /// </summary>
         public void GetMenuItems(Channel i_Channel, bool b_Analog, List<GraphMenuItem> i_Items)
         {
-            if (i_Channel == null || OsziPanel.CurCapture.mi_Channels.Count < 2)
+            if (i_Channel == null || Utils.CurCapture.mi_Channels.Count < 2)
                 return;
 
-            if (b_Analog && !Utils.OsziPanel.SeparateChannels)
+            if (b_Analog && !Utils.PanelOszi.SeparateChannels)
                 return; // Analog channels cannot be moved while drawn one on top of the other
 
-            int s32_Index = OsziPanel.CurCapture.mi_Channels.IndexOf(i_Channel);
+            int s32_Index = Utils.CurCapture.mi_Channels.IndexOf(i_Channel);
             if (s32_Index > 0)
             {
                 GraphMenuItem i_Up = new GraphMenuItem();
@@ -75,7 +75,7 @@ namespace Operations
                 i_Items.Add(i_Up);
             }
 
-            if (s32_Index < OsziPanel.CurCapture.mi_Channels.Count - 1)
+            if (s32_Index < Utils.CurCapture.mi_Channels.Count - 1)
             {
                 GraphMenuItem i_Down = new GraphMenuItem();
                 i_Down.ms_MenuText  = "Move Channel Down";
@@ -90,7 +90,7 @@ namespace Operations
         /// </summary>
         public String Execute(Channel i_ChannelSrc, int s32_Sample, bool b_Analog, Object o_Tag)
         {
-            List<Channel> i_Channels = OsziPanel.CurCapture.mi_Channels;
+            List<Channel> i_Channels = Utils.CurCapture.mi_Channels;
             int s32_SrcIndex = i_Channels.IndexOf(i_ChannelSrc);
             int s32_DstIndex = s32_SrcIndex;
 
@@ -105,8 +105,8 @@ namespace Operations
             i_Channels[s32_DstIndex] = i_ChannelSrc;
             i_Channels[s32_SrcIndex] = i_ChannelDst;
 
-            OsziPanel.CurCapture.mb_Dirty = true; // user has unsaved changes
-            Utils.OsziPanel.RecalculateEverything();
+            Utils.CurCapture.mb_Dirty = true; // user has unsaved changes
+            Utils.PanelOszi.RecalculateEverything();
 
             return "Channel moved.";
         }

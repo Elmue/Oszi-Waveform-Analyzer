@@ -6,7 +6,7 @@ function ShowFullSize(Link, DivLeft, ImgFile)
 {
     if (DivLeft < 20)
         DivLeft = 20;
-    
+
     if (Link != null && Link == LastLink)
     {
         HideFullSize(); // sets LastLink = null

@@ -48,7 +48,7 @@ using Capture           = OsziWaveformAnalyzer.Utils.Capture;
 using Channel           = OsziWaveformAnalyzer.Utils.Channel;
 using GraphMenuItem     = Operations.OperationManager.GraphMenuItem;
 using Utils             = OsziWaveformAnalyzer.Utils;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 
 namespace Operations
 {
@@ -62,12 +62,12 @@ namespace Operations
             if (i_Channel == null)
                 return; // user did not click on a Channel
 
-            if (b_Analog && Utils.OsziPanel.CommonAnalogDrawing)
+            if (b_Analog && Utils.PanelOszi.CommonAnalogDrawing)
                 return; // Analog channels cannot be distinguished while drawn one on top of the other
 
             GraphMenuItem i_Item = new GraphMenuItem();
             i_Item.ms_MenuText  = String.Format("Delete {0} Channel", b_Analog ? "Analog" : "Digital");
-            i_Item.ms_ImageFile = "Cross.ico";
+            i_Item.ms_ImageFile = "Trash.ico";
             i_Items.Add(i_Item);
         }
 
@@ -88,20 +88,19 @@ namespace Operations
 
             if (i_Channel.mf_Analog == null && i_Channel.mu8_Digital == null)
             {
-                OsziPanel.CurCapture.mi_Channels.Remove(i_Channel);
+                Utils.CurCapture.mi_Channels.Remove(i_Channel);
 
-                if (OsziPanel.CurCapture.mi_Channels.Count == 0)
+                if (Utils.CurCapture.mi_Channels.Count == 0)
                 {
-                    // Set OsziPanel.CurCapture = null --> show black screen
+                    // Set Utils.CurCapture = null --> show black screen
                     Utils.FormMain.ResetInputFile(); 
-
-                    OsziPanel.CurCapture.mb_Dirty = false; // all empty --> nothing to be saved anymore
+                    Utils.FormMain.StoreNewCapture(null);
                     return "Channel deleted.";
                 }
             }
 
-            OsziPanel.CurCapture.mb_Dirty = true; // user has unsaved changes
-            Utils.OsziPanel.RecalculateEverything();
+            Utils.CurCapture.mb_Dirty = true; // user has unsaved changes
+            Utils.PanelOszi.RecalculateEverything();
             return "Channel deleted.";
         }
     }

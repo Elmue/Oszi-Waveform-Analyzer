@@ -50,7 +50,7 @@ using OperationManager  = Operations.OperationManager;
 using IOperation        = Operations.OperationManager.IOperation;
 using RtfDocument       = OsziWaveformAnalyzer.RtfDocument;
 using RtfBuilder        = OsziWaveformAnalyzer.RtfBuilder;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 using Utils             = OsziWaveformAnalyzer.Utils;
 using Capture           = OsziWaveformAnalyzer.Utils.Capture;
 using Channel           = OsziWaveformAnalyzer.Utils.Channel;
@@ -112,6 +112,7 @@ namespace Operations
         static DecodeUART()
         {
             mi_DemoFiles.Add("ISO 14230 K-Line Bus-Init 10400 Baud.oszi",                 "10400,Low,8,None,One,ISO14230,false");
+            mi_DemoFiles.Add("ISO 14230 K-Line 10400 baud over Microphone Input.oszi",    "10400,Low,8,None,One,ISO14230,false");
             mi_DemoFiles.Add("Yamaha XTZ 250 K-Line OWON VDS 1022.csv",                   "15400,Low,8,None,One,None,false");
             mi_DemoFiles.Add("Yamaha XTZ 250 K-Line OWON VDS 1022.bin",                   "15400,Low,8,None,One,None,false");
             mi_DemoFiles.Add("Yamaha XTZ 250 K-Line Picoscope 3206.csv",                  "15400,Low,8,None,One,None,false");
@@ -195,16 +196,16 @@ namespace Operations
             lblChip.Text = "";
 
             lblNameA.Text = mi_ChannelRx.ms_Name;
-            lblNameA   .ForeColor = OsziPanel.GetChannelColor(mi_ChannelRx);
+            lblNameA   .ForeColor = PanelOszi.GetChannelColor(mi_ChannelRx);
             lblChannelA.ForeColor = lblNameA.ForeColor;
 
             // Load the correct settings for the demo files, otherwise from registry
             String s_Settings;
-            if (OsziPanel.CurCapture.ms_Path == null ||
-                !mi_DemoFiles.TryGetValue(Path.GetFileName(OsziPanel.CurCapture.ms_Path), out s_Settings))
+            if (Utils.CurCapture.ms_Path == null ||
+                !mi_DemoFiles.TryGetValue(Path.GetFileName(Utils.CurCapture.ms_Path), out s_Settings))
                 s_Settings = Utils.RegReadString(eRegKey.RS232_Settg);
 
-            foreach (Channel i_ChannelB in OsziPanel.CurCapture.mi_Channels)
+            foreach (Channel i_ChannelB in Utils.CurCapture.mi_Channels)
             {
                 if (i_ChannelB != mi_ChannelRx && i_ChannelB.mu8_Digital != null)
                     comboChannelB.Items.Add(i_ChannelB);
@@ -233,7 +234,7 @@ namespace Operations
         private void comboChannelB_SelectedIndexChanged(object sender, EventArgs e)
         {
             mi_ChannelTx = (Channel)comboChannelB.SelectedItem;
-            lblChannelB.ForeColor = OsziPanel.GetChannelColor(mi_ChannelTx);
+            lblChannelB.ForeColor = PanelOszi.GetChannelColor(mi_ChannelTx);
         }
 
         private void checkHalfduplex_CheckedChanged(object sender, EventArgs e)
@@ -304,11 +305,11 @@ namespace Operations
             mi_RtfBinary = i_RtfDoc.CreateNewBuilder();
             mi_RtfAnsi   = i_RtfDoc.CreateNewBuilder();
 
-            mc_DataRx = OsziPanel.GetChannelColor(mi_ChannelRx);
+            mc_DataRx = PanelOszi.GetChannelColor(mi_ChannelRx);
             mc_CtrlRx = Color.FromArgb(mc_DataRx.R *5 /6, mc_DataRx.G *2 /3, mc_DataRx.B *3 /4);
             if (checkHalfduplex.Checked)
             {
-                mc_DataTx = OsziPanel.GetChannelColor(mi_ChannelTx);
+                mc_DataTx = PanelOszi.GetChannelColor(mi_ChannelTx);
                 mc_CtrlTx = Color.FromArgb(mc_DataTx.R *2 /3, mc_DataTx.G *2 /3, mc_DataTx.B *3 /4);
             }
 
@@ -358,9 +359,8 @@ namespace Operations
             Cursor = Cursors.Arrow;
 
             // Show RTF, if created and switch to tab "Decoder"
-            Utils.FormMain.ShowAnalysisResult(i_RtfDoc, ms32_SmplPerBit); 
+            Utils.FormMain.ShowAnalysisResult(i_RtfDoc, ms32_SmplPerBit, "UART Decoder Result"); 
 
-            Utils.OsziPanel.RecalculateEverything();
             DialogResult = DialogResult.OK;
         }
 
@@ -373,7 +373,7 @@ namespace Operations
         void Decode(Channel[] i_Channels, int s32_Baudrate, eDigiState e_StartBit, int s32_DataBits, 
                     Parity e_Parity, eStopBits e_StopBits)
         {
-            double d_SamplesPerBit = (double)(Utils.PICOS_PER_SECOND / (OsziPanel.CurCapture.ms64_SampleDist * s32_Baudrate));
+            double d_SamplesPerBit = (double)(Utils.PICOS_PER_SECOND / (Utils.CurCapture.ms64_SampleDist * s32_Baudrate));
             if (d_SamplesPerBit < MIN_SAMPLES_BIT)
             {
                 MessageBox.Show(this, "The resolution of the capture is too low for a reliable detection.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -492,7 +492,7 @@ namespace Operations
                             mi_RtfAnsi  .AppendLine(Color.White, s_Msg);
 
                             s32_Baudrate    = i_Packet.ms32_Baudrate;
-                            d_SamplesPerBit = (double)(Utils.PICOS_PER_SECOND / (OsziPanel.CurCapture.ms64_SampleDist * s32_Baudrate));
+                            d_SamplesPerBit = (double)(Utils.PICOS_PER_SECOND / (Utils.CurCapture.ms64_SampleDist * s32_Baudrate));
                             s32_MaxPause    = (int)(d_SamplesPerBit * 10); 
 
                             // If baudrate has increased --> adapt to the faster baudrate
@@ -657,8 +657,8 @@ namespace Operations
             if (i_Packet.mi_Data.Count == 0)
                 return;
 
-            mi_RtfBinary.AppendTimestampLine(i_Packet.ms32_StartSample, i_Packet.ms32_EndSample, true);
-            mi_RtfAnsi  .AppendTimestampLine(i_Packet.ms32_StartSample, i_Packet.ms32_EndSample, true);
+            mi_RtfBinary.AppendTimestamp(true, i_Packet.ms32_StartSample, i_Packet.ms32_EndSample);
+            mi_RtfAnsi  .AppendTimestamp(true, i_Packet.ms32_StartSample, i_Packet.ms32_EndSample);
 
             mi_RtfBinary.AppendText(Color.Magenta, "> ");
             mi_RtfAnsi  .AppendText(Color.Magenta, "> ");

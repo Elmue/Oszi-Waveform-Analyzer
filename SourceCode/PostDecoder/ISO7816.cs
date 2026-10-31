@@ -48,7 +48,7 @@ using RtfDocument       = OsziWaveformAnalyzer.RtfDocument;
 using RtfBuilder        = OsziWaveformAnalyzer.RtfBuilder;
 using Utils             = OsziWaveformAnalyzer.Utils;
 using Channel           = OsziWaveformAnalyzer.Utils.Channel;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 using IPostDecode       = PostDecoder.PostDecoderManager.IPostDecode;
 
 namespace PostDecoder
@@ -73,7 +73,7 @@ namespace PostDecoder
         /// </summary>
         public ISO7816()
         {
-            foreach (Channel i_Channel in OsziPanel.CurCapture.mi_Channels)
+            foreach (Channel i_Channel in Utils.CurCapture.mi_Channels)
             {
                 if (i_Channel.mu8_Digital == null)
                     return;
@@ -132,7 +132,7 @@ namespace PostDecoder
 
             // The baudrate must NOT be switched if after this packet the card receives a RESET on the Reset pin (Low).
             // The second reset is the "Soft Reset". After this the card responds again with the same baudrate.
-            for (int S=i_Packet.ms32_StartSample; S<OsziPanel.CurCapture.ms32_Samples; S++)
+            for (int S=i_Packet.ms32_StartSample; S<Utils.CurCapture.ms32_Samples; S++)
             {
                 if (mi_Reset.mu8_Digital[S] == 0)
                 {

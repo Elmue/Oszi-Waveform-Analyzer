@@ -37,6 +37,7 @@ NAMING CONVENTIONS which allow to see the type of a variable immediately without
 
 using System;
 using System.IO;
+using System.IO.Ports;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Text;
@@ -45,13 +46,19 @@ using System.Reflection;
 using System.Windows.Forms;
 
 using IPlatform         = Platform.PlatformManager.IPlatform;
-using IDevice           = Platform.PlatformManager.IDevice;
-using RtfViewer         = OsziWaveformAnalyzer.RtfViewer;
+using IUsbDevice        = Platform.PlatformManager.IUsbDevice;
+using PanelRtf          = OsziWaveformAnalyzer.PanelRtf;
 using ScpiCombo         = Transfer.SCPI.ScpiCombo;
 using Utils             = OsziWaveformAnalyzer.Utils;
+using AudioDataCallback = Platform.PlatformManager.AudioDataCallback;
+using IAudioInDevice    = Platform.PlatformManager.IAudioInDevice;
 
 namespace Platform
 {
+    /// <summary>
+    /// On Mono you must install:
+    /// sudo apt install libgdiplus
+    /// </summary>
     public class PlfMono : IPlatform
     {
         /// <summary>
@@ -66,7 +73,7 @@ namespace Platform
         /// Adapt .NET framework to support clickable RTF links in RichTextBox
         /// Does Mono support clickable RTF links at all ???
         /// </summary>
-        public void RtfBoxWndProc(RtfViewer iRtfViewer, ref Message k_Msg)
+        public void RtfBoxWndProc(PanelRtf i_PanelRtf, ref Message k_Msg)
         {
         }
 
@@ -75,7 +82,7 @@ namespace Platform
         /// </summary>
         public void ShowHelp(Form i_Owner, String s_Chapter = "")
         {
-            throw new NotImplementedException();
+            throw new NotImplementedException("Showing HTML help is not implemented for Mono. But you can implement this!");
         }
 
         /// <summary>
@@ -83,7 +90,7 @@ namespace Platform
         /// </summary>
         public void ShowURL(Form i_Owner, String s_URL)
         {
-            throw new NotImplementedException();
+            throw new NotImplementedException("Opening an URL in the browser is not implemented for Mono. But you can implement this!");
         }
 
         /// <summary>
@@ -91,7 +98,7 @@ namespace Platform
         /// </summary>
         public void CreateShortcutInStartMenu()
         {
-            throw new NotImplementedException();
+            throw new NotImplementedException("Creating a start menu entry is not implemented for Mono. But you can implement this!");
         }
 
         /// <summary>
@@ -100,7 +107,7 @@ namespace Platform
         /// </summary>
         public void AssociateOsziExtension()
         {
-            throw new NotImplementedException();
+            throw new NotImplementedException("Asociating file extension OSZI is not implemented for Mono. But you can implement this!");
         }
 
         /// <summary>
@@ -108,7 +115,7 @@ namespace Platform
         /// </summary>
         public void PreventSleep()
         {
-            throw new NotImplementedException();
+            throw new NotImplementedException("Prevent sleep is not implemented for Mono. But you can implement this!");
         }
 
         /// <summary>
@@ -121,13 +128,28 @@ namespace Platform
                             + "since version 4.20. No extra installation is required.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
+        // ============================ SCPI ================================
+
         /// <summary>
         /// Load the combobox with all SCPI devices currently connected over USB.
         /// The ComboBox Items must be ScpiCombo classes.
         /// </summary>
         public void EnumerateUsbDevices(ComboBox i_ComboUsbDevice)
         {
-            throw new NotImplementedException();
+            i_ComboUsbDevice.Items.Clear();
+
+            throw new NotImplementedException("USB transfer is not implemented for Mono. But you can implement this!");
+        }
+
+        /// <summary>
+        /// Load the combobox with all /dev/ttyXXX ports
+        /// </summary>
+        public void EnumerateRs232Ports(ComboBox i_ComboRS232)
+        {
+            String[] s_Ports = SerialPort.GetPortNames();
+            i_ComboRS232.Items.Clear();
+            i_ComboRS232.Items.AddRange(s_Ports);
+            Utils.ComboAdjustDropDownWidth(i_ComboRS232);
         }
 
         /// <summary>
@@ -135,9 +157,16 @@ namespace Platform
         /// The constructor of this class opens the device with fopen("/dev/usbtmc0", "r+")
         /// i_Combo comes from EnumerateScpiDevices()
         /// </summary>
-        public IDevice OpenUsbDevice(ScpiCombo i_Combo)
+        public IUsbDevice OpenUsbDevice(ScpiCombo i_Combo)
         {
-            throw new NotImplementedException();
+            throw new NotImplementedException("USB transfer is not implemented for Mono. But you can implement this!");
+        }
+
+        // ============================ Audio Input ================================
+
+        public List<IAudioInDevice> EnumerateAudioInputDevices()
+        {
+            throw new NotImplementedException("Audio recording is not implemented for Mono. But you can implement this!");
         }
     }
 }

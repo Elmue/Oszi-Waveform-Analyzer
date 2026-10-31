@@ -31,7 +31,7 @@
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTransfer));
             this.comboDevices = new System.Windows.Forms.ComboBox();
-            this.lblUsbEndp = new System.Windows.Forms.Label();
+            this.lblDevice1 = new System.Windows.Forms.Label();
             this.btnInstallDriver = new System.Windows.Forms.Button();
             this.btnSearch = new System.Windows.Forms.Button();
             this.btnOpen = new System.Windows.Forms.Button();
@@ -39,6 +39,8 @@
             this.statusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.label5 = new System.Windows.Forms.Label();
             this.toolTip = new System.Windows.Forms.ToolTip(this.components);
+            this.radioRS232 = new System.Windows.Forms.RadioButton();
+            this.comboRS232 = new System.Windows.Forms.ComboBox();
             this.groupCommand = new System.Windows.Forms.GroupBox();
             this.label9 = new System.Windows.Forms.Label();
             this.textResponse = new System.Windows.Forms.TextBox();
@@ -50,9 +52,18 @@
             this.radioTCP = new System.Windows.Forms.RadioButton();
             this.radioVXI = new System.Windows.Forms.RadioButton();
             this.textVxiLink = new System.Windows.Forms.TextBox();
-            this.lblVxiLink = new System.Windows.Forms.Label();
+            this.lblDevice3 = new System.Windows.Forms.Label();
+            this.lblDevice2 = new System.Windows.Forms.Label();
+            this.comboBaud = new System.Windows.Forms.ComboBox();
+            this.groupDcCapture = new System.Windows.Forms.GroupBox();
+            this.comboTotalTime = new System.Windows.Forms.ComboBox();
+            this.label2 = new System.Windows.Forms.Label();
+            this.btnDcCapture = new System.Windows.Forms.Button();
+            this.comboInterval = new System.Windows.Forms.ComboBox();
+            this.label3 = new System.Windows.Forms.Label();
             this.statusStrip.SuspendLayout();
             this.groupCommand.SuspendLayout();
+            this.groupDcCapture.SuspendLayout();
             this.SuspendLayout();
             // 
             // comboDevices
@@ -64,14 +75,14 @@
             this.comboDevices.Size = new System.Drawing.Size(128, 21);
             this.comboDevices.TabIndex = 10;
             // 
-            // lblUsbEndp
+            // lblDevice1
             // 
-            this.lblUsbEndp.AutoSize = true;
-            this.lblUsbEndp.Location = new System.Drawing.Point(61, 9);
-            this.lblUsbEndp.Name = "lblUsbEndp";
-            this.lblUsbEndp.Size = new System.Drawing.Size(66, 13);
-            this.lblUsbEndp.TabIndex = 1;
-            this.lblUsbEndp.Text = "USB Device";
+            this.lblDevice1.AutoSize = true;
+            this.lblDevice1.Location = new System.Drawing.Point(61, 9);
+            this.lblDevice1.Name = "lblDevice1";
+            this.lblDevice1.Size = new System.Drawing.Size(79, 13);
+            this.lblDevice1.TabIndex = 1;
+            this.lblDevice1.Text = "Label Device 1";
             // 
             // btnInstallDriver
             // 
@@ -111,7 +122,7 @@
             // 
             this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.statusLabel});
-            this.statusStrip.Location = new System.Drawing.Point(0, 184);
+            this.statusStrip.Location = new System.Drawing.Point(0, 261);
             this.statusStrip.Name = "statusStrip";
             this.statusStrip.Size = new System.Drawing.Size(566, 22);
             this.statusStrip.SizingGrip = false;
@@ -144,6 +155,29 @@
             this.toolTip.InitialDelay = 500;
             this.toolTip.ReshowDelay = 100;
             // 
+            // radioRS232
+            // 
+            this.radioRS232.AutoSize = true;
+            this.radioRS232.Location = new System.Drawing.Point(14, 50);
+            this.radioRS232.Name = "radioRS232";
+            this.radioRS232.Size = new System.Drawing.Size(125, 17);
+            this.radioRS232.TabIndex = 4;
+            this.radioRS232.Text = "RS232 / Virtual COM";
+            this.toolTip.SetToolTip(this.radioRS232, "RS232 serial port or USB virtual COM port (e.g. Hameg HO720 interface)");
+            this.radioRS232.UseVisualStyleBackColor = true;
+            this.radioRS232.CheckedChanged += new System.EventHandler(this.OnRadioButton_CheckedChanged);
+            // 
+            // comboRS232
+            // 
+            this.comboRS232.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboRS232.FormattingEnabled = true;
+            this.comboRS232.Location = new System.Drawing.Point(222, 25);
+            this.comboRS232.Name = "comboRS232";
+            this.comboRS232.Size = new System.Drawing.Size(79, 21);
+            this.comboRS232.TabIndex = 35;
+            this.toolTip.SetToolTip(this.comboRS232, "Baudrate, Databits, Parity (N,E,O), Stopbits, Handshake (RTS, XON, NONE)\nThese mu" +
+                    "st match the settings in the interface menu of the oscilloscope.");
+            // 
             // groupCommand
             // 
             this.groupCommand.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)
@@ -154,12 +188,12 @@
             this.groupCommand.Controls.Add(this.label7);
             this.groupCommand.Controls.Add(this.textCommand);
             this.groupCommand.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(255)))), ((int)(((byte)(128)))));
-            this.groupCommand.Location = new System.Drawing.Point(13, 56);
+            this.groupCommand.Location = new System.Drawing.Point(13, 133);
             this.groupCommand.Name = "groupCommand";
             this.groupCommand.Size = new System.Drawing.Size(541, 114);
             this.groupCommand.TabIndex = 100;
             this.groupCommand.TabStop = false;
-            this.groupCommand.Text = "  Any SCPI Device  ";
+            this.groupCommand.Text = "  Send SCPI Command Manually  ";
             // 
             // label9
             // 
@@ -264,22 +298,136 @@
             this.textVxiLink.Size = new System.Drawing.Size(48, 20);
             this.textVxiLink.TabIndex = 30;
             // 
-            // lblVxiLink
+            // lblDevice3
             // 
-            this.lblVxiLink.AutoSize = true;
-            this.lblVxiLink.Location = new System.Drawing.Point(253, 9);
-            this.lblVxiLink.Name = "lblVxiLink";
-            this.lblVxiLink.Size = new System.Drawing.Size(47, 13);
-            this.lblVxiLink.TabIndex = 15;
-            this.lblVxiLink.Text = "VXI Link";
+            this.lblDevice3.AutoSize = true;
+            this.lblDevice3.Location = new System.Drawing.Point(253, 9);
+            this.lblDevice3.Name = "lblDevice3";
+            this.lblDevice3.Size = new System.Drawing.Size(79, 13);
+            this.lblDevice3.TabIndex = 15;
+            this.lblDevice3.Text = "Label Device 3";
+            // 
+            // lblDevice2
+            // 
+            this.lblDevice2.AutoSize = true;
+            this.lblDevice2.Location = new System.Drawing.Point(140, 9);
+            this.lblDevice2.Name = "lblDevice2";
+            this.lblDevice2.Size = new System.Drawing.Size(76, 13);
+            this.lblDevice2.TabIndex = 16;
+            this.lblDevice2.Text = "Label Device2";
+            // 
+            // comboBaud
+            // 
+            this.comboBaud.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboBaud.FormattingEnabled = true;
+            this.comboBaud.Items.AddRange(new object[] {
+            "9600",
+            "14400",
+            "19200",
+            "28800",
+            "38400",
+            "57600",
+            "115200"});
+            this.comboBaud.Location = new System.Drawing.Point(141, 25);
+            this.comboBaud.Name = "comboBaud";
+            this.comboBaud.Size = new System.Drawing.Size(75, 21);
+            this.comboBaud.TabIndex = 101;
+            // 
+            // groupDcCapture
+            // 
+            this.groupDcCapture.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.groupDcCapture.Controls.Add(this.comboTotalTime);
+            this.groupDcCapture.Controls.Add(this.label2);
+            this.groupDcCapture.Controls.Add(this.btnDcCapture);
+            this.groupDcCapture.Controls.Add(this.comboInterval);
+            this.groupDcCapture.Controls.Add(this.label3);
+            this.groupDcCapture.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(255)))), ((int)(((byte)(128)))));
+            this.groupDcCapture.Location = new System.Drawing.Point(13, 71);
+            this.groupDcCapture.Name = "groupDcCapture";
+            this.groupDcCapture.Size = new System.Drawing.Size(540, 55);
+            this.groupDcCapture.TabIndex = 102;
+            this.groupDcCapture.TabStop = false;
+            this.groupDcCapture.Text = "  DC Capture  ";
+            // 
+            // comboTotalTime
+            // 
+            this.comboTotalTime.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboTotalTime.FormattingEnabled = true;
+            this.comboTotalTime.Items.AddRange(new object[] {
+            "10 minutes",
+            "30 minutes",
+            "1 hour",
+            "2 hours",
+            "6 hours",
+            "12 hours",
+            "1 day",
+            "2 days",
+            "5 days",
+            "10 days"});
+            this.comboTotalTime.Location = new System.Drawing.Point(265, 22);
+            this.comboTotalTime.Name = "comboTotalTime";
+            this.comboTotalTime.Size = new System.Drawing.Size(85, 21);
+            this.comboTotalTime.TabIndex = 29;
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.ForeColor = System.Drawing.Color.White;
+            this.label2.Location = new System.Drawing.Point(201, 25);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(60, 13);
+            this.label2.TabIndex = 28;
+            this.label2.Text = "Total Time:";
+            // 
+            // btnDcCapture
+            // 
+            this.btnDcCapture.ForeColor = System.Drawing.Color.Black;
+            this.btnDcCapture.Location = new System.Drawing.Point(443, 20);
+            this.btnDcCapture.Name = "btnDcCapture";
+            this.btnDcCapture.Size = new System.Drawing.Size(84, 23);
+            this.btnDcCapture.TabIndex = 26;
+            this.btnDcCapture.Text = "DC Capture";
+            this.btnDcCapture.UseVisualStyleBackColor = true;
+            this.btnDcCapture.Click += new System.EventHandler(this.btnDcCapture_Click);
+            // 
+            // comboInterval
+            // 
+            this.comboInterval.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboInterval.FormattingEnabled = true;
+            this.comboInterval.Items.AddRange(new object[] {
+            "500 ms",
+            "1 second",
+            "2 seconds",
+            "5 seconds",
+            "10 seconds",
+            "30 seconds"});
+            this.comboInterval.Location = new System.Drawing.Point(102, 22);
+            this.comboInterval.Name = "comboInterval";
+            this.comboInterval.Size = new System.Drawing.Size(85, 21);
+            this.comboInterval.TabIndex = 27;
+            // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.ForeColor = System.Drawing.Color.White;
+            this.label3.Location = new System.Drawing.Point(13, 25);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(85, 13);
+            this.label3.TabIndex = 26;
+            this.label3.Text = "Capture Interval:";
             // 
             // FormTransfer
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.DimGray;
-            this.ClientSize = new System.Drawing.Size(566, 206);
-            this.Controls.Add(this.lblVxiLink);
+            this.ClientSize = new System.Drawing.Size(566, 283);
+            this.Controls.Add(this.groupDcCapture);
+            this.Controls.Add(this.comboBaud);
+            this.Controls.Add(this.lblDevice2);
+            this.Controls.Add(this.comboRS232);
+            this.Controls.Add(this.radioRS232);
+            this.Controls.Add(this.lblDevice3);
             this.Controls.Add(this.textVxiLink);
             this.Controls.Add(this.radioVXI);
             this.Controls.Add(this.radioTCP);
@@ -291,7 +439,7 @@
             this.Controls.Add(this.btnOpen);
             this.Controls.Add(this.btnSearch);
             this.Controls.Add(this.btnInstallDriver);
-            this.Controls.Add(this.lblUsbEndp);
+            this.Controls.Add(this.lblDevice1);
             this.Controls.Add(this.comboDevices);
             this.ForeColor = System.Drawing.Color.White;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
@@ -302,11 +450,13 @@
             this.ShowInTaskbar = false;
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "Transfer";
+            this.Text = "Capture / Transfer";
             this.statusStrip.ResumeLayout(false);
             this.statusStrip.PerformLayout();
             this.groupCommand.ResumeLayout(false);
             this.groupCommand.PerformLayout();
+            this.groupDcCapture.ResumeLayout(false);
+            this.groupDcCapture.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -315,7 +465,7 @@
         #endregion
 
         private System.Windows.Forms.ComboBox comboDevices;
-        private System.Windows.Forms.Label lblUsbEndp;
+        private System.Windows.Forms.Label lblDevice1;
         private System.Windows.Forms.Button btnInstallDriver;
         private System.Windows.Forms.Button btnSearch;
         private System.Windows.Forms.Button btnOpen;
@@ -334,7 +484,17 @@
         private System.Windows.Forms.RadioButton radioTCP;
         private System.Windows.Forms.RadioButton radioVXI;
         private System.Windows.Forms.TextBox textVxiLink;
-        private System.Windows.Forms.Label lblVxiLink;
+        private System.Windows.Forms.Label lblDevice3;
+        private System.Windows.Forms.RadioButton radioRS232;
+        private System.Windows.Forms.ComboBox comboRS232;
+        private System.Windows.Forms.Label lblDevice2;
+        private System.Windows.Forms.ComboBox comboBaud;
+        private System.Windows.Forms.GroupBox groupDcCapture;
+        private System.Windows.Forms.ComboBox comboTotalTime;
+        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.Button btnDcCapture;
+        private System.Windows.Forms.ComboBox comboInterval;
+        private System.Windows.Forms.Label label3;
 
     }
 }

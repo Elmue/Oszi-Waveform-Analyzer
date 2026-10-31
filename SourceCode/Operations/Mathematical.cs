@@ -46,9 +46,11 @@ using System.Windows.Forms;
 using OperationManager  = Operations.OperationManager;
 using IOperation        = Operations.OperationManager.IOperation;
 using Utils             = OsziWaveformAnalyzer.Utils;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 using Capture           = OsziWaveformAnalyzer.Utils.Capture;
 using Channel           = OsziWaveformAnalyzer.Utils.Channel;
+using Range             = OsziWaveformAnalyzer.Utils.Range;
+using eRegKey           = OsziWaveformAnalyzer.Utils.eRegKey;
 using GraphMenuItem     = Operations.OperationManager.GraphMenuItem;
 using PlatformManager   = Platform.PlatformManager;
 
@@ -59,11 +61,20 @@ namespace Operations
         // Single Channel Analog
         const String MATH_FACTOR      = "Multiply with factor";
         const String MATH_OFFSET      = "Add Offset";
+        const String MATH_SET_VOLT    = "Set constant voltage";
+
+        // Single Channel Digital
+        const String MATH_SET_STATUS  = "Set digital status";
+
+        // Single Channel Analog + Digital
+        const String MATH_INVERT      = "Invert Channel";
+
         // Dual Channel Analog
         const String MATH_ADD_AB      = "Add Channel A + B";
         const String MATH_SUBTRACT_AB = "Subtract Channel A - B";
         const String MATH_SUBTRACT_BA = "Subtract Channel B - A";
         const String MATH_MULTI_AB    = "Multiply Channel A x B";
+        
         // Dual Channel Digital
         const String MATH_LOGIC_AND   = "Logical AND";
         const String MATH_LOGIC_OR    = "Logical OR";
@@ -74,6 +85,8 @@ namespace Operations
         Channel mi_Result;
         bool    mb_Analog;
         bool    mb_Single;
+        Size    mk_ClientSize;
+        Panel[] mi_Panels;
 
         /// <summary>
         /// Implementation of interface IOperation
@@ -83,11 +96,8 @@ namespace Operations
             if (i_Channel == null)
                 return; // user did not click on a Channel
 
-            if (b_Analog && Utils.OsziPanel.CommonAnalogDrawing)
+            if (b_Analog && Utils.PanelOszi.CommonAnalogDrawing)
                 return; // Analog channels cannot be distinguished while drawn one on top of the other
-
-            if (!b_Analog && OsziPanel.CurCapture.ms32_DigitalCount < 2)
-                return; // at least 2 digital channels are required for AND, OR, XOR
 
             GraphMenuItem i_Item = new GraphMenuItem();
             i_Item.ms_MenuText  = "Math Operations";
@@ -112,84 +122,143 @@ namespace Operations
         {
             base.OnLoad(e);
 
+            mk_ClientSize = ClientSize;
+            mi_Panels     = new Panel[] { panelChannelB, panelResult, panelApply, panelParam};
+
+            lblMathMode.Text = mb_Analog ? "Analog" : "Digital";
+
+            foreach (Channel i_Channel in Utils.CurCapture.mi_Channels)
+            {
+                if (mb_Analog && i_Channel.mf_Analog == null)
+                    continue;
+                
+                if (!mb_Analog && i_Channel.mu8_Digital == null)
+                    continue;
+
+                comboChannelA.Items.Add(i_Channel);
+                comboChannelB.Items.Add(i_Channel);
+            }
+
+            // ---------------------------------------------------
+
+            comboChannelA.SelectedItem = mi_ChannelA;
+
+            // select another channel B than channel A if more than 1 channel
+            if (comboChannelB.Items.Count > 1)
+                comboChannelB.SelectedIndex = (comboChannelA.SelectedIndex + 1) % comboChannelB.Items.Count;
+            else
+                panelChannelB.Visible = false;
+
+            // ------------------- !LAST! ------------------------
+
             if (mb_Analog)
             {
-                if (OsziPanel.CurCapture.mi_Channels.Count > 1)
+                if (Utils.CurCapture.ms32_AnalogCount > 1)
                 {
                     comboMath.Items.Add(MATH_ADD_AB);
                     comboMath.Items.Add(MATH_SUBTRACT_AB);
                     comboMath.Items.Add(MATH_SUBTRACT_BA);
                     comboMath.Items.Add(MATH_MULTI_AB);
+                    comboMath.Items.Add(Utils.TOOLTIP_SEPARATOR);
                 }
+                comboMath.Items.Add(MATH_INVERT);
                 comboMath.Items.Add(MATH_FACTOR);
                 comboMath.Items.Add(MATH_OFFSET);
+                comboMath.Items.Add(MATH_SET_VOLT);
             }
             else // Digital
             {
-                comboMath.Items.Add(MATH_LOGIC_AND);
-                comboMath.Items.Add(MATH_LOGIC_OR);
-                comboMath.Items.Add(MATH_LOGIC_XOR); // This is the same as subtracting digital A - B  or  B - A
+                if (Utils.CurCapture.ms32_DigitalCount > 1)
+                {
+                    comboMath.Items.Add(MATH_LOGIC_AND);
+                    comboMath.Items.Add(MATH_LOGIC_OR);
+                    comboMath.Items.Add(MATH_LOGIC_XOR); 
+                    comboMath.Items.Add(Utils.TOOLTIP_SEPARATOR);
+                }
+                comboMath.Items.Add(MATH_INVERT);
+                comboMath.Items.Add(MATH_SET_STATUS);
             }
 
-            lblMathMode.Text = mb_Analog ? "Analog" : "Digital";
-
-            // Dual
-            lblNameA   .Text      = mi_ChannelA.ms_Name;
-            lblNameA   .ForeColor = OsziPanel.GetChannelColor(mi_ChannelA);
-            lblChannelA.ForeColor = lblNameA.ForeColor;
-
-            // Single
-            lblName    .Text      = lblNameA.Text;
-            lblName    .ForeColor = lblNameA.ForeColor;
-            lblChannel .ForeColor = lblNameA.ForeColor;
-
-            foreach (Channel i_ChannelB in OsziPanel.CurCapture.mi_Channels)
-            {
-                if (i_ChannelB != mi_ChannelA)
-                    comboChannelB.Items.Add(i_ChannelB);
-            }
-
-            comboChannelB.SelectedIndex = 0;
-            comboMath.SelectedIndex     = 0;
+            // Calls comboMath_SelectedIndexChanged()
+            comboMath.Text = Utils.RegReadString(eRegKey.MathOperation);
+            if (comboMath.SelectedIndex < 0)
+                comboMath.SelectedIndex = 0;
         }
 
         private void comboMath_SelectedIndexChanged(object sender, EventArgs e)
         {
             mb_Single = false;
+            lblUnit .Text = "";
+            lblParam.Text = "";
+
+            if (comboMath.Text == Utils.TOOLTIP_SEPARATOR)
+            {
+                comboMath.SelectedIndex ++;
+                return;
+            }
+
             switch (comboMath.Text)
             {
+                case MATH_INVERT:
+                    mb_Single = true;
+                    break;
                 case MATH_FACTOR:
                     mb_Single = true;
                     lblParam.Text = "Factor:";
-                    lblUnit .Text = "";
                     break;
                 case MATH_OFFSET:
                     mb_Single = true;
                     lblParam.Text = "Offset:";
                     lblUnit .Text = "Volt";
                     break;
+                case MATH_SET_VOLT:
+                    mb_Single = true;
+                    lblParam.Text = "Fix Voltage:";
+                    lblUnit .Text = "Volt";
+                    break;
+                case MATH_SET_STATUS:
+                    mb_Single = true;
+                    lblParam.Text = "Digital Status:";
+                    lblUnit .Text = "(0 or 1)";
+                    break;
             }
 
-            groupSingle.Visible =  mb_Single;
-            groupDual  .Visible = !mb_Single;
+            panelParam .Visible = lblParam.Text.Length > 0;
+            panelResult.Visible = comboChannelB.Visible && !mb_Single;
+            panelApply .Visible = comboChannelB.Visible &&  mb_Single;
 
-            GroupBox i_GroupVisible = mb_Single ? groupSingle : groupDual;
-            i_GroupVisible.Top = lblMathMode.Bottom + 10;
+            // -----------------------------------
 
-            Size k_Client   = ClientSize;
-            k_Client.Height = i_GroupVisible.Bottom + 45;
-            ClientSize      = k_Client;
+            int s32_Y = mi_Panels[0].Top;
+            foreach (Panel i_Panel in mi_Panels)
+            {
+                i_Panel.Top = s32_Y;
+
+                if (i_Panel.Visible) 
+                    s32_Y += i_Panel.Height;
+            }
+
+            mk_ClientSize.Height = s32_Y + 45;
+            ClientSize = mk_ClientSize;
         }
 
-        private void linkHelp_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        private void comboChannelA_SelectedIndexChanged(object sender, EventArgs e)
         {
-            PlatformManager.Instance.ShowHelp(this, "SplitHalfDuplex");
+            mi_ChannelA = (Channel)comboChannelA.SelectedItem;
+            lblChannelA.ForeColor = PanelOszi.GetChannelColor(mi_ChannelA);
+            radioApplyA.ForeColor = lblChannelA.ForeColor;
         }
 
         private void comboChannelB_SelectedIndexChanged(object sender, EventArgs e)
         {
             mi_ChannelB = (Channel)comboChannelB.SelectedItem;
-            lblChannelB.ForeColor = OsziPanel.GetChannelColor(mi_ChannelB);
+            lblChannelB.ForeColor = PanelOszi.GetChannelColor(mi_ChannelB);
+            radioApplyB.ForeColor = lblChannelB.ForeColor;
+        }
+
+        private void linkHelp_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            PlatformManager.Instance.ShowHelp(this, "SplitHalfDuplex");
         }
 
         private void btnExecuteClose_Click(object sender, EventArgs e)
@@ -206,56 +275,111 @@ namespace Operations
         }
         void Calculate(bool b_Close)
         {
+            Utils.RegWriteString(eRegKey.MathOperation, comboMath.Text);
+
             try
             {
-                Prepare(); // throws
+                Channel[] i_ApplyTo = Prepare(); // throws
 
-                int s32_Samples = OsziPanel.CurCapture.ms32_Samples;
+                // Get the sample range that the user has selected (if any)
+                Range k_Sel = Utils.PanelOszi.UserSelectionOrAll;
 
                 if (mb_Analog)
                 {
                     switch (comboMath.Text)
                     {
-                        case MATH_ADD_AB: // dual
-                            for (int S=0; S<s32_Samples; S++)
+                        // ------------------------------- Dual -------------------------------------
+
+                        case MATH_ADD_AB:
+                            for (int S=k_Sel.ms32_Start; S<k_Sel.ms32_End; S++)
                                 mi_Result.mf_Analog[S] = mi_ChannelA.mf_Analog[S] + mi_ChannelB.mf_Analog[S];
+
+                            mi_Result.mi_SampleMinMax.mb_AnalogOK = false;
                             break;
 
-                        case MATH_SUBTRACT_AB: // dual
-                            for (int S=0; S<s32_Samples; S++)
+                        case MATH_SUBTRACT_AB:
+                            for (int S=k_Sel.ms32_Start; S<k_Sel.ms32_End; S++)
                                 mi_Result.mf_Analog[S] = mi_ChannelA.mf_Analog[S] - mi_ChannelB.mf_Analog[S];
+
+                            mi_Result.mi_SampleMinMax.mb_AnalogOK = false;
                             break;
 
-                        case MATH_SUBTRACT_BA: // dual
-                            for (int S=0; S<s32_Samples; S++)
+                        case MATH_SUBTRACT_BA:
+                            for (int S=k_Sel.ms32_Start; S<k_Sel.ms32_End; S++)
                                 mi_Result.mf_Analog[S] = mi_ChannelB.mf_Analog[S] - mi_ChannelA.mf_Analog[S];
+
+                            mi_Result.mi_SampleMinMax.mb_AnalogOK = false;
                             break;
 
-                        case MATH_MULTI_AB: // dual
-                            for (int S=0; S<s32_Samples; S++)
+                        case MATH_MULTI_AB:
+                            for (int S=k_Sel.ms32_Start; S<k_Sel.ms32_End; S++)
                                 mi_Result.mf_Analog[S] = mi_ChannelA.mf_Analog[S] * mi_ChannelB.mf_Analog[S];
+
+                            mi_Result.mi_SampleMinMax.mb_AnalogOK = false;
                             break;
 
-                        case MATH_FACTOR: // single
+                        // ------------------------------- Single -------------------------------------
+
+                        case MATH_INVERT:
+                            foreach (Channel i_Chan in i_ApplyTo)
+                            {
+                                float f_Sum = i_Chan.mf_Min + i_Chan.mf_Max;
+                                for (int i=k_Sel.ms32_Start; i<k_Sel.ms32_End; i++)
+                                    i_Chan.mf_Analog[i] = f_Sum - i_Chan.mf_Analog[i];
+
+                                i_Chan.mi_SampleMinMax.mb_AnalogOK = false; 
+                            }
+                            break;
+
+                        case MATH_FACTOR:
                             float f_Factor;
                             if (!float.TryParse(textParameter.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out f_Factor))
+                            {
+                                textParameter.Focus();
                                 throw new Exception("Enter a valid factor.");
+                            }
 
-                            for (int S=0; S<s32_Samples; S++)
-                                mi_ChannelA.mf_Analog[S] *= f_Factor;
+                            foreach (Channel i_Chan in i_ApplyTo)
+                            {
+                                for (int S=k_Sel.ms32_Start; S<k_Sel.ms32_End; S++)
+                                    i_Chan.mf_Analog[S] *= f_Factor;
 
-                            mi_ChannelA.mi_SampleMinMax.mb_AnalogOK = false;
+                                i_Chan.mi_SampleMinMax.mb_AnalogOK = false;
+                            }
                             break;
 
-                        case MATH_OFFSET: // single
+                        case MATH_OFFSET:
                             float f_Offset;
                             if (!float.TryParse(textParameter.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out f_Offset))
+                            {
+                                textParameter.Focus();
                                 throw new Exception("Enter a valid offset.");
+                            }
 
-                            for (int S=0; S<s32_Samples; S++)
-                                mi_ChannelA.mf_Analog[S] += f_Offset;
+                            foreach (Channel i_Chan in i_ApplyTo)
+                            {
+                                for (int S=k_Sel.ms32_Start; S<k_Sel.ms32_End; S++)
+                                    i_Chan.mf_Analog[S] += f_Offset;
 
-                            mi_ChannelA.mi_SampleMinMax.mb_AnalogOK = false;
+                                i_Chan.mi_SampleMinMax.mb_AnalogOK = false;
+                            }
+                            break;
+
+                        case MATH_SET_VOLT:
+                            float f_Volt;
+                            if (!float.TryParse(textParameter.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out f_Volt))
+                            {
+                                textParameter.Focus();
+                                throw new Exception("Enter a valid voltage.");
+                            }
+
+                            foreach (Channel i_Chan in i_ApplyTo)
+                            {
+                                for (int S=k_Sel.ms32_Start; S<k_Sel.ms32_End; S++)
+                                    i_Chan.mf_Analog[S] = f_Volt;
+
+                                i_Chan.mi_SampleMinMax.mb_AnalogOK = false;
+                            }
                             break;
                     }
                 }
@@ -263,25 +387,64 @@ namespace Operations
                 {
                     switch (comboMath.Text)
                     {
-                        case MATH_LOGIC_AND: // dual
-                            for (int S=0; S<s32_Samples; S++)
+                        // ------------------------------- Dual -------------------------------------
+
+                        case MATH_LOGIC_AND:
+                            for (int S=k_Sel.ms32_Start; S<k_Sel.ms32_End; S++)
                                 mi_Result.mu8_Digital[S] = (Byte)((mi_ChannelA.mu8_Digital[S] & mi_ChannelB.mu8_Digital[S]) & 0x01);
+
+                            mi_Result.mi_SampleMinMax.mb_DigitalOK = false;
                             break;
 
-                        case MATH_LOGIC_OR: // dual
-                            for (int S=0; S<s32_Samples; S++)
+                        case MATH_LOGIC_OR:
+                            for (int S=k_Sel.ms32_Start; S<k_Sel.ms32_End; S++)
                                 mi_Result.mu8_Digital[S] = (Byte)((mi_ChannelA.mu8_Digital[S] | mi_ChannelB.mu8_Digital[S]) & 0x01);
+
+                            mi_Result.mi_SampleMinMax.mb_DigitalOK = false;
                             break;
 
-                        case MATH_LOGIC_XOR: // dual (This is the same as subtracting A - B  or  B - A)
-                            for (int S=0; S<s32_Samples; S++)
+                        case MATH_LOGIC_XOR: 
+                            for (int S=k_Sel.ms32_Start; S<k_Sel.ms32_End; S++)
                                 mi_Result.mu8_Digital[S] = (Byte)((mi_ChannelA.mu8_Digital[S] ^ mi_ChannelB.mu8_Digital[S]) & 0x01);
+
+                            mi_Result.mi_SampleMinMax.mb_DigitalOK = false;
+                            break;
+
+                        // ------------------------------- Single -------------------------------------
+
+                        case MATH_INVERT:
+                            foreach (Channel i_Chan in i_ApplyTo)
+                            {
+                                for (int i=k_Sel.ms32_Start; i<k_Sel.ms32_End; i++)
+                                    i_Chan.mu8_Digital[i] ^= 0x01;
+
+                                i_Chan.mi_SampleMinMax.mb_DigitalOK = false;
+                                i_Chan.mi_MarkRows = null;
+                            }
+                            break;
+
+                        case MATH_SET_STATUS:
+                            Byte u8_Status;
+                            if (!Byte.TryParse(textParameter.Text, out u8_Status) || u8_Status > 1)
+                            {
+                                textParameter.Focus();
+                                throw new Exception("Enter either 0 or 1.");
+                            }
+
+                            foreach (Channel i_Chan in i_ApplyTo)
+                            {
+                                for (int S=k_Sel.ms32_Start; S<k_Sel.ms32_End; S++)
+                                    i_Chan.mu8_Digital[S] = u8_Status;
+
+                                i_Chan.mi_SampleMinMax.mb_DigitalOK = false;
+                                i_Chan.mi_MarkRows = null;
+                            }
                             break;
                     }
                 }
 
-                OsziPanel.CurCapture.mb_Dirty = true; // user has unsaved changes
-                Utils.OsziPanel.RecalculateEverything();
+                Utils.CurCapture.mb_Dirty = true; // user has unsaved changes
+                Utils.PanelOszi.RecalculateEverything();
 
                 if (b_Close)
                     DialogResult = DialogResult.OK;
@@ -292,42 +455,58 @@ namespace Operations
             }
         }
 
-        void Prepare()
+        Channel[] Prepare()
         {
-            if (mb_Single)
+            if (mb_Single) // Add Offset, Multiply Factor
             {
                 mi_Result = null;
-                return;
-            }
 
-            int s32_Samples = OsziPanel.CurCapture.ms32_Samples;
+                List<Channel> i_ApplyTo = new List<Channel>();
+                if (radioApplyA.Checked)
+                {
+                    i_ApplyTo.Add(mi_ChannelA);
+                }
+                else if (radioApplyB.Checked)
+                {
+                    i_ApplyTo.Add(mi_ChannelB);
+                }
+                else if (radioApplyAll.Checked)
+                {
+                    foreach (Channel i_Chan in comboChannelA.Items)
+                    {
+                        i_ApplyTo.Add(i_Chan);
+                    }
+                }
+                return i_ApplyTo.ToArray();
+            }
+            else // Add, Subtract, Multiply Channels, AND, OR, XOR
+            {
+                if (mi_ChannelA == mi_ChannelB)
+                    throw new Exception("Select two different channels.");
+
+                int s32_Samples = Utils.CurCapture.ms32_Samples;
+                mi_Result = Utils.CurCapture.FindOrCreateChannel(textResult.Text, mi_ChannelA, mi_ChannelB);
             
-            if (mb_Analog)
-            {
-                if (mi_ChannelA.mf_Analog == null || mi_ChannelB.mf_Analog == null)
-                    throw new Exception("If you right-click on an analog channel you must select two analog channels.");
+                if (mb_Analog)
+                {
+                    if (mi_Result.mf_Analog == null)
+                        mi_Result.mf_Analog = new float[s32_Samples];
 
-                mi_Result = OsziPanel.CurCapture.FindOrCreateChannel(textResult.Text, mi_ChannelA, mi_ChannelB);
-                if (mi_Result.mf_Analog == null)
-                    mi_Result.mf_Analog = new float[s32_Samples];
+                    mi_Result.mi_SampleMinMax.mb_AnalogOK = false; // must be re-calculated
+                }
+                else // digital
+                {
+                    if (mi_Result.mu8_Digital == null)
+                        mi_Result.mu8_Digital = new Byte[s32_Samples];
 
-                mi_Result.mi_SampleMinMax.mb_AnalogOK = false; // must be re-calculated
+                    mi_Result.mi_MarkRows = null;
+                    mi_Result.mi_SampleMinMax.mb_DigitalOK = false; // must be re-calculated
+                }
+
+                if (!comboChannelA.Items.Contains(mi_Result)) comboChannelA.Items.Add(mi_Result);
+                if (!comboChannelB.Items.Contains(mi_Result)) comboChannelB.Items.Add(mi_Result);
+                return null;
             }
-            else // digital
-            {
-                if (mi_ChannelA.mu8_Digital == null || mi_ChannelB.mu8_Digital == null)
-                    throw new Exception("If you right-click on a digital channel you must select two digital channels.");
-
-                mi_Result = OsziPanel.CurCapture.FindOrCreateChannel(textResult.Text, mi_ChannelA, mi_ChannelB);
-                if (mi_Result.mu8_Digital == null)
-                    mi_Result.mu8_Digital = new Byte[s32_Samples];
-
-                mi_Result.mi_MarkRows = null;
-                mi_Result.mi_SampleMinMax.mb_DigitalOK = false; // must be re-calculated
-            }
-
-            if (!comboChannelB.Items.Contains(mi_Result))
-                 comboChannelB.Items.Add(mi_Result);
         }
     }
 }

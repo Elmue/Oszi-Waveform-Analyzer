@@ -3,7 +3,7 @@
 <head>
     <title>Oszi Waveform Analyzer</title>
     <meta name="description" content="The open source 'Oszi Waveform Analyzer' from ElmüSoft transfers oscilloscope analog and digital signals over USB or TCP to the computer, displays the waveforms, decodes SPI, I2C, UART, CAN Bus and has more features that you find nowhere else.">
-    <meta name="keywords" content="Oscilloscope, SCPI Transfer, SPI decoder, VXI-11, I2C decoder, UART decoder, CAN FD decoder, RS232 decoder, RS422 decoder, RS485 decoder, ISO7816 decoder, ISO14230 decoder, A/D Converter, Magnetic Stripe decoder, Noise suppression, logic analyzer, open source">
+    <meta name="keywords" content="Oscilloscope, SCPI Transfer, SPI decoder, VXI-11, I2C decoder, UART decoder, CAN FD decoder, RS232 decoder, RS422 decoder, RS485 decoder, ISO7816 decoder, ISO14230 decoder, A/D Converter, Magnetic Stripe decoder, Noise suppression, logic analyzer, Spectrum analyzer, X/Y Plot, Oscilloscope Music, open source">
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
     <meta http-equiv="MSThemeCompatible" content="Yes">
@@ -25,13 +25,15 @@
     <div id="MenuHead" style="display:none;" onMouseover="ShowMenu(true)">Menu</div>
     <div id="MenuContent" class="Menu">
         <div><a href="#Features"         class="MenuLink" onClick="ShowMenu(false)">Features</a></div>
-        <div><a href="#Decoders"         class="MenuLink" onClick="ShowMenu(false)">Implemented Decoders</a></div>
+        <div><a href="#ImplementOszi"    class="MenuLink" onClick="ShowMenu(false)">Implemented Oscilloscopes</a></div>        
         <div><a href="#DemoFiles"        class="MenuLink" onClick="ShowMenu(false)">Demo Files</a></div>
-        <div><a href="#Menu"             class="MenuLink" onClick="ShowMenu(false)">Keyboard, Mouse and Menu</a></div>
+        <div><a href="#KeyboardMouse"    class="MenuLink" onClick="ShowMenu(false)">Keyboard, Mouse and Menu</a></div>
         <div><a href="#MeasureTime"      class="MenuLink" onClick="ShowMenu(false)">Measure Timing</a></div>
         <div><a href="#DC_Capture"       class="MenuLink" onClick="ShowMenu(false)">DC Capture</a></div>
         <div><a href="#AD_Conversion"    class="MenuLink" onClick="ShowMenu(false)">A/D Conversion</a></div>
         <div><a href="#NoiseSuppression" class="MenuLink" onClick="ShowMenu(false)">Noise Suppression</a></div>
+        <div><a href="#XYPlot"           class="MenuLink" onClick="ShowMenu(false)">X/Y Plot, Lissajous, Oszi Music</a></div>        
+        <div><a href="#FFT"              class="MenuLink" onClick="ShowMenu(false)">FFT Spectrum Analysis</a></div>
         <div><a href="#SplitHalfDuplex"  class="MenuLink" onClick="ShowMenu(false)">Split Half Duplex Communication</a></div>
         <div><a href="#DecodeAsync"      class="MenuLink" onClick="ShowMenu(false)">Decode Asynchronous Data</a></div>
         <div>— &nbsp; <a href="#PostISO7816"      class="MenuLink" onClick="ShowMenu(false)">Post Decoder ISO 7816</a></div>
@@ -49,17 +51,19 @@
         <div>— &nbsp; <a href="#SCPI"             class="MenuLink" onClick="ShowMenu(false)">SCPI Protocol</a></div>
         <div>— &nbsp; <a href="#Prerequisites"    class="MenuLink" onClick="ShowMenu(false)">Prerequisites</a></div>
         <div>— &nbsp; <a href="#TransferWindow"   class="MenuLink" onClick="ShowMenu(false)">Transfer Window</a></div>
-        <div>— &nbsp; <a href="#ImplementOszi"    class="MenuLink" onClick="ShowMenu(false)">Implemented Oscilloscopes</a></div>
         <div>— &nbsp; <a href="#ScpiLibrary"      class="MenuLink" onClick="ShowMenu(false)">The SCPI Library in C#</a></div>
-        <div><a href="#ConnectionModes"  class="MenuLink" onClick="ShowMenu(false)">Connection over USB, VXI, TCP</a></div>
+        <div><a href="#ConnectionModes"  class="MenuLink" onClick="ShowMenu(false)">Connecting to the Oszi</a></div>
         <div>— &nbsp; <a href="#USBConnection"    class="MenuLink" onClick="ShowMenu(false)">USB Connection</a></div>
         <div>— &nbsp; <a href="#VXIConnection"    class="MenuLink" onClick="ShowMenu(false)">VXI-11 Connection</a></div>
         <div>— &nbsp; <a href="#TCPConnection"    class="MenuLink" onClick="ShowMenu(false)">TCP Connection</a></div>
+        <div>— &nbsp; <a href="#RS232Connection"  class="MenuLink" onClick="ShowMenu(false)">RS232 Connection</a></div>
         <div>— &nbsp; <a href="#TransferSpeed"    class="MenuLink" onClick="ShowMenu(false)">Transfer Speed</a></div>
-        <div><a href="#StoreDisk"        class="MenuLink" onClick="ShowMenu(false)">Storing Waveforms on Disk</a></div>
+        <div><a href="#AudioRecording"   class="MenuLink" onClick="ShowMenu(false)">Audio Recording</a></div>
+        <div><a href="#StoreDisk"        class="MenuLink" onClick="ShowMenu(false)">Waveform File Formats</a></div>
         <div>— &nbsp; <a href="#CsvFiles"         class="MenuLink" onClick="ShowMenu(false)">CSV Files</a></div>
         <div>— &nbsp; <a href="#WfmFiles"         class="MenuLink" onClick="ShowMenu(false)">WFM Files</a></div>
         <div>— &nbsp; <a href="#OsziFiles"        class="MenuLink" onClick="ShowMenu(false)">OSZI Files</a></div>
+        <div>— &nbsp; <a href="#AudioFiles"       class="MenuLink" onClick="ShowMenu(false)">Audio Files</a></div>
         <div>— &nbsp; <a href="#OtherFiles"       class="MenuLink" onClick="ShowMenu(false)">Other File Formats</a></div>
         <div>— &nbsp; <a href="#SaveOptions"      class="MenuLink" onClick="ShowMenu(false)">Save File Options</a></div>
         <div><a href="#Frames"           class="MenuLink" onClick="ShowMenu(false)">Display of Multiple Frames</a></div>
@@ -86,7 +90,7 @@
 <a name="Features"></a>
 <h3>Features</h3>
 <ul>
-<li><div>Oszi Waveform Analyzer transfers analog and digital signals from the oscilloscope to the computer over USB, VXI or TCP using the <b>SCPI</b> protocol.</div>
+<li><div>Oszi Waveform Analyzer transfers analog and digital signals from the oscilloscope to the computer over USB, VXI, TCP or RS232 using the <b>SCPI</b> protocol.</div>
 <li><div>Oszi Waveform Analyzer does <span class="Error">NOT</span> require any huge installations like NI-VISA (1 GB), TekVISA (100 MB), IVI, UltraSigma (500 MB).</div>
 <li><div>Oszi Waveform Analyzer requires only the .NET framework 4.0 or higher.</div>
 <li><div>Oszi Waveform Analyzer runs on <b>Windows 7, 8, 10 and 11</b>.</div>
@@ -108,17 +112,44 @@
 <li><div>Oszi Waveform Analyzer is <b>high quality</b> software, written by a software and hardware developer with 40 years of programming and electronic experience.</div>
 <li><div>Oszi Waveform Analyzer is optimized for <b>maximum speed</b> in every line of it's very clean source code.</div>
 <li><div><span class="Error">NEW in v1.9</span>: Added BIN, CSV and CAP file import for <b>OWON</b> oscilloscopes VDS 1021, VDS 1022, VDS 2052 (thanks to Leonel).</div>
-<li><div><span class="Error">NEW in v2.0</span>: Bugfix in mathematical operations if result channel was used as input (thanks to Peter).</div>
-<li><div><span class="Error">NEW in v2.1 + v2.2</span>: Bugfixes in I²C decoder (thanks to Peter).</div>
-<li><div><span class="Error">NEW in v2.3</span>: Double clicking an Oszi file does not open a new process (thanks to Peter).</div>
+<li><div><span class="Error">NEW in v2.0</span>: Bugfix in mathematical operations if result channel was used as input (thanks to Peter D.).</div>
+<li><div><span class="Error">NEW in v2.1 + v2.2</span>: Bugfixes in I²C decoder (thanks to Peter D.).</div>
+<li><div><span class="Error">NEW in v2.3</span>: Double clicking an Oszi file does not open a new process (thanks to Peter D.).</div>
 <li><div><span class="Error">NEW in v2.4</span>: Added CSV import for <b>Picoscope</b> 3206 MSO (thanks to Leonel).</div>
-<li><div><span class="Error">NEW in v2.5</span>: DC Capture allows to capture very slow processes over hours or days.</div>
-<li><div><span class="Error">NEW in v2.6</span>: Decoder for USB Full speed captures.</div>
+<li><div><span class="Error">NEW in v2.5</span>: <b>DC Capture</b> allows to capture very slow processes over hours or days.</div>
+<li><div><span class="Error">NEW in v2.6</span>: Decoder for <b>USB Full speed</b> captures.</div>
 <li><div><span class="Error">NEW in v2.7</span>: Several improvements in CAN decoder.</div>
+<li><div><span class="Error">NEW in v2.8</span>: Import <b>WAV, FLAC, AIFF, M4A, MP4, WMA</b> audio files and record audio from the <b>soundcard</b>.</div>
+<li><div><span class="Error">NEW in v2.9</span>: Support for <b>Hameg</b> Compact series and CombiScope series and HM507 (thanks to Peter Schwendner).</div>
+<li><div><span class="Error">NEW in v3.0</span>: Add <b>FFT</b> Spectrum Analyzer and <b>X/Y Plot</b> (thanks to Peter Schwendner).</div>
 </ul>
 
+<a name="ImplementOszi"></a>
+<h3>Current Implementation of Oscilloscope Models</h3>
+
+<table class="DataTable">
+<tr><th>Oscilloscope Brand</th><th>Serie</th><th>File Import</th><th>SCPI Transfer</th><th>Tested</th></tr>
+<tr><td class="Green">Rigol</td><td>DS1000Z</td> <td>CSV</td><td>USB, VXI, TCP</td><td>by Elmü on DS1074Z</td></tr>
+<tr><td class="Green">Rigol</td><td>MSO1000Z</td><td>CSV</td><td>USB, VXI, TCP</td><td class="Gray">same commands as DS1000Z</td></tr>
+<tr><td class="Green">Rigol</td><td>DS1000D</td> <td>CSV</td><td>USB, RS232 (no RJ45 plug)</td><td class="Gray">same commands as DS1000E</td></tr>
+<tr><td class="Green">Rigol</td><td>DS1000E</td> <td>CSV</td><td>USB, RS232 (no RJ45 plug)</td><td>by Leonardo on DS1102E</td></tr>
+<tr><td class="Green">Hameg</td><td>Compact</td><td>not supported</td><td>RS232 (HO720), TCP (HO730)</td><td>by Peter on HMO1522</td></tr>
+<tr><td class="Green">Hameg</td><td>CombiScope</td><td>not supported</td><td>RS232 (HO720), TCP (HO730)</td><td>by Peter on HM2008</td></tr>
+<tr><td class="Green">Hameg</td><td>HM507</td><td>not supported</td><td>RS232 (proprietary protocol)</td><td>by Peter on HM507</td></tr>
+<tr><td class="Green">OWON</td><td>VDS1022</td> <td>CSV, BIN, CAP&nbsp;</td><td>not yet implemented</td><td>by Leonel on VDS1022</td></tr>
+<tr><td class="Green">OWON</td><td>VDS2052</td> <td>CSV, BIN, CAP</td><td>not yet implemented</td><td class="Gray">same format as VDS1022</td></tr>
+<tr><td class="Green">Picoscope</td><td>3206 MSO</td> <td>CSV</td><td>not yet implemented</td><td>by Leonel on 3206 MSO</td></tr>
+<tr><td class="Red">Tektronix</td>           <td>TODO</td><td colspan="3">Download <a href="https://download.tek.com/manual/MSO-DPO5000-B-DPO7000-C-DPO70000-B-C-D-DX-SX-DSA70000-B-C-D-and-MSO70000-C-DX-077001019.pdf" target="_blank">Manual</a></td></tr>
+<tr><td class="Red">Rohde &amp; Schwarz</td> <td>TODO</td><td colspan="3">Download <a href="https://www.batronix.com/files/Rohde-&-Schwarz/Oscilloscope/HMO1xx2/HMO1002_1202_ProgrammingManual_en.pdf" target="_blank">Manual</a></td></tr>
+<tr><td class="Red">Agilent</td>             <td>TODO</td><td colspan="3">Download <a href="https://ridl.cfd.rit.edu/products/manuals/Agilent/oscilloscopes/6000_series_prog_guide.pdf" target="_blank">Manual</a></td></tr>
+<tr><td class="Red">Siglent</td>             <td>TODO</td><td colspan="3">Download <a href="https://www.siglent.com/upload_file/document/SDS1000%20Series&SDS2000X&SDS2000X-E_ProgrammingGuide_PG01-E02D.pdf" target="_blank">Manual</a></td></tr>
+<tr><td class="Red">Keysight</td>            <td>TODO</td><td colspan="3">Download <a href="https://www.keysight.com/us/en/assets/9018-07141/programming-guides/9018-07141.pdf?success=true" target="_blank">Manual</a></td></tr>
+<tr><td class="Red">Hantek</td>              <td>TODO</td><td colspan="3">Download <a href="https://www.hantek.com/Product/DSO4000BC/DSO4000BC_SCPI_EN.pdf" target="_blank">Manual</a></td></tr>
+<tr><td class="Red">Other Brands</td>        <td>TODO</td><td colspan="3">Use Google ...</td></tr>
+</table>
+
 <a name="Decoders"></a>
-<h3>Currently Implemented Decoders</h3>
+<h3>Current Implementation of Decoders</h3>
 <table class="DataTable">
 <tr><th>Decoder</th><th>Comment</th></tr>
 <tr><td>UART</td><td>Async Serial (RS232, RS422, RS485, Smartcard, K-Line, ...)</td></tr>
@@ -132,6 +163,9 @@
 <tr><td>PN 532</td><td>SPI + I²C traffic of Philips RFID + NFC transmission chip</td></tr>
 <tr><td>ISO 7816</td><td>UART traffic of pinpad with smartcard</td></tr>
 <tr><td>ISO 14230</td><td>K-Line traffic with vehicle ECU (Engine Control Unit)</td></tr>
+<tr><th>Analysis</th><th>Comment</th></tr>
+<tr><td>FFT Spectrum</td><td>Frequency spectrum of an analog channel with 5 window functions and peak detection</td></tr>
+<tr><td>X/Y Plot</td><td>Two analog channels as Lissajous figure with phase measurement</td></tr>
 <tr><td>and more...</td><td>You can implement your own decoders + post decoders</td></tr>
 </table>
 
@@ -144,7 +178,7 @@
 <div>Oszi Waveform Analyzer comes with several pre-installed demo files that you should open one by one to discover all features.</div>
 <div>These files are real-world oscilloscope captures that can show you how to use this program.</div>
 
-<a name="Menu"></a>
+<a name="KeyboardMouse"></a>
 <h1>Keyboard, Mouse and Menu</h1>
 
 <table class="DataTable">
@@ -160,18 +194,22 @@
 <div><b>NOTE:</b> If the keys don't work, left-click once into the Oszi panel.</div>
 
 <table class="DataTable">
-<tr><th>Mouse</th><th>Function</th></tr>
-<tr><td>Right button click on analog signal</td><td>Show menu with available analog operations</td></tr>
-<tr><td>Right button click on digital signal</td><td>Show menu with available digital operations</td></tr>
-<tr><td>Move mouse while left button is down</td><td>Move the signal horizontally and vertically</td></tr>
-<tr><td>Move mouse while no button is down</td><td>Show tooltip</td></tr>
-<tr><td>Mouse wheel</td><td>Move the signal vertically if the vertical scrollbar is visible<br>Move the signal horizontally otherwise</td></tr>
+<tr><th>Mouse</th><th>Key</th><th>Function</th></tr>
+<tr><td>Move mouse</td><td>---</td><td>Show <b>tooltip</b></td></tr>
+<tr><td>Right click on analog signal</td><td>---</td><td>Show <b>menu</b> with available analog operations</td></tr>
+<tr><td>Right click on digital signal</td><td>---</td><td>Show <b>menu</b> with available digital operations</td></tr>
+<tr><td>Drag mouse (while left button down)</td><td>---</td><td><b>Move</b> the signal horizontally and vertically</td></tr>
+<tr><td>Drag mouse (while left button down)</td><td>CTRL</td><td><b>Zoom</b> into the selected area</td></tr>
+<tr><td>Drag mouse (while left button down)</td><td>SHIFT</td><td><b>Select</b> an area for special operations</td></tr>
+<tr><td>Left click</td><td>SHIFT</td><td><b>Remove</b> the selection area</td></tr>
+<tr><td>Double click</td><td>---</td><td><b>Reset</b> zoom (show the entire signal)</td></tr>
+<tr><td>Mouse wheel</td><td>---</td><td><b>Move</b> the signal vertically if the vertical scrollbar is visible<br>Move the signal horizontally otherwise</td></tr>
 </table>
 
-
+<a name="Menu"></a>
 <div>Here you see the right-click menu:</div>
 <p>
-<img src="Images/RightClickMenu.png" width="741" height="468" alt="Oszi Waveform Analyzer - The right-click menu">
+<img src="Images/RightClickMenu.png" width="741" height="450" alt="Oszi Waveform Analyzer - The right-click menu">
 <p>
 <div>The menu is dynamic, which means that the menu items depend on what you click.</div>
 <div>The <b>logic analyzer</b> functions require a digital channel, so you get less menu items when you click an analog channel.</div>
@@ -270,6 +308,88 @@
 <div>When you apply too much filtering the signal flanks are affected.</div>
 <div><span class="Error">ATTENTION:</span> If you apply the noise filter to multiple channels of the same capture make sure</div>
 <div>that you use the <b>same filter settings</b> for all channels otherwise you get phase shifts between the channels.</div>
+
+
+<a name="XYPlot"></a>
+<h1>X/Y Plot, Lissajous, Oscillosopce Music</h1>
+<div>Whenever you have loaded 2 analog channels you can display them in the X/Y plot like on the good old analog oscilloscopes.</div>
+<div>You will see two dimensional lissajous figures.</div>
+<p>
+<div><b>Oscilloscope music</b> is an art where audio files are created to draw figures on an oscilloscope in X/Y mode.</div>
+<div>Oszi Waveform Analyzer can directly load lossless audio files or record signals from your soundcard.</div>
+<div>For good quality you need files with <b>16 bit</b> resolution. I added an example file to test this:</div>
+<table class="TblImage">
+    <tr><td><img src="Images/XY Plot.png" alt="Rigol UltraScope" width="150" height="150"></td></tr>
+    <tr><td class="Center"><span class="Link" onClick="ShowFullSize(this, 0, 'Images/XY Plot.png')">Show Full Size</span></td></tr>
+</table>
+<p>
+<div>The X/Y plot has a <b>scrollbar</b> below where you can navigate to any part of the file.</div>
+<div>You can also play the file like a <b>video</b> which simulates the <b>phosphor screen</b> of an analog oscilloscope.</div>
+<div>1.) The electron beam draws a line and the brightness decays over time.</div>
+<div>2.) The brightness also depends on how fast the beam was moving.</div>
+<div>The X/Y plot simulates both effects.</div>
+<p>
+<img src="Images/ControlXY.png" width="219" height="129">
+<p>
+<ul>
+<li><div><b>Glow Count:</b> Here you enter how many samples are drawn at once.</div>
+    <div>The higher this value the longer is the phosphor glow effect.</div>
+<li><div><b>Play Step:</b> Here you enter how many steps the video player advances every 20 ms (50 frames per second).</div>
+    <div>The higher the value the faster the file is played.</div>
+<li><div>All controls and buttons have a <b>tooltip</b> that explains what they do.</div>
+</ul>
+
+
+<a name="FFT"></a>
+<h1>FTT Spectrum Analysis</h1>
+
+<div>Oszi Waveform Analyzer can do a Fast Fourier Transformation Spectrum Analysis of any analog signal.</div>
+
+<table><tr>
+<td>
+    <table class="TblImage">
+        <tr><td><img src="Images/FFT Spectrum Graph.png" alt="FFT Spectrum Analysis" width="242" height="150"></td></tr>
+        <tr><td class="Center"><span class="Link" onClick="ShowFullSize(this, 0, 'Images/FFT Spectrum Graph.png')">Show Full Size</span></td></tr>
+    </table>
+</td>
+<td>&nbsp;</td>
+<td>
+    <table class="TblImage">
+        <tr><td><img src="Images/FFT Spectrum Table.png" alt="FFT Spectrum Analysis" width="204" height="150"></td></tr>
+        <tr><td class="Center"><span class="Link" onClick="ShowFullSize(this, 0, 'Images/FFT Spectrum Table.png')">Show Full Size</span></td></tr>
+    </table>
+</td>
+</tr></table>
+
+<div>You can <a href="#KeyboardMouse">select</a> a part of the signal in the Oszi panel and then use the <a href="#Menu">menu</a> to start the FFT analysis.</div>
+<div>In the upper right corner the strongest <b>peaks</b> are listed and a tooltip shows more information.</div>
+<div>You can use <a href="#KeyboardMouse">keyboard and mouse</a> to <b>zoom</b> in and out.</div>
+<p>
+<div>The FFT analysis splits the frequency spectrum into <b>bin</b>'s.</div>
+<div>The width of a bin is the horizontal <b>resolution</b> which is displayed above the graph, in this example 3.571 kHz.</div>
+<div>The highest frequency that FFT can analyze is called <b>Nyquist</b> and is half the sample rate.</div>
+<p>
+<img src="Images/ControlFFT.png" width="284" height="105">
+<p>
+<div>You can chose between the following <b>window curves</b> that fade the signal down to zero at the edges.</div>
+<div>By smoothing out those hard cuts, the window avoids that false frequency noise ruins the analysis.</div>
+<table class="DataTable" style="max-width:750px">
+<tr><th>Window</th><th>Advantage</th><th>Disadvantage</th></tr>
+<tr><td>Rectangular</td><td>Sharpest main peak.<br>Best raw <b>frequency</b> resolution.</td><td>Terrible "spectral leakage" (spillover).<br>Strong signals will hide weak ones nearby.</td></tr>
+<tr><td>Hann</td><td>Great balance between frequency resolution and reducing spillover.</td><td>Slightly wider peak than Rectangular.<br>Minor amplitude errors for off-bin signals.</td></tr>
+<tr><td>Hamming</td><td>Excellent for separating two close frequency components of similar strength.</td><td>Higher background spillover further away from the main peak compared to Hann.</td></tr>
+<tr><td>Blackman-Harris</td><td>Best at revealing tiny signals hiding right next to massive ones.</td><td>Very wide peak, which blurs close-together frequencies and lowers resolution.</td></tr>
+<tr><td>Flat Top</td><td>Gives the most accurate <b>amplitude</b> (signal strength) measurements.</td><td>Widest peak of all, resulting in the poorest frequency resolution.</td></tr>
+</table>
+<p>
+<div class="Error">ATTENTION:</div>
+<div>An oscilloscope capture with <b>8 bit</b> resolution has a low dynamic range, clock jitter, A/D non-linearity and amplifier noise.</div>
+<div>Everything 50 dB (theoretical) or 38 dB (real world) below the strongest peak is not reliable.</div>
+<div>Oszi Waveform Analyzer draws a blue line 45 dB below the strongest peak if the resolution is 8 bit.</div>
+<div>For the best result capture the signal on your oscilloscope with maximum vertical zoom to use the A/D resolution fully.</div>
+<p>
+<div>If you analyze a long signal only the first <b>4 Mega samples</b> are used, the rest is ignored.</div>
+
 
 
 <a name="SplitHalfDuplex"></a>
@@ -535,7 +655,7 @@
 <p>
 <table class="TblImage">
     <tr><td><img src="Images/RigolUltraScope.png" alt="Rigol UltraScope" width="335" height="210"></td></tr>
-    <tr><td class="Center"><span class="Link" onClick="ShowFullSize(this, 'Images/RigolUltraScope.png')">Show Full Size</span></td></tr>
+    <tr><td class="Center"><span class="Link" onClick="ShowFullSize(this, 0, 'Images/RigolUltraScope.png')">Show Full Size</span></td></tr>
 </table>
 <div><b>Rigol UltraScope</b> requires that you first install the huge <b>UltraSigma</b> (<b>530 Megabyte</b> installer).</div>
 <div>UltraScope is nothing more than a remote control of the oscillosope.</div>
@@ -582,69 +702,66 @@
 <h3>Transfer Window</h3>
 
 <p>
-<img src="Images/ScpiTransferWindow.png" width="582" height="498" alt="Oszi Waveform Analyzer - SCPI USB VXI TCP Transfer">
+<img src="Images/ScpiTransferWindow.png" width="582" height="496" alt="Oszi Waveform Analyzer - SCPI USB VXI TCP Transfer">
 <p>
-<div>This window has two parts:</div>
+<div>This window has four parts:</div>
 <ol>
-<li><div>The <b>upper part</b> sends Rigol-specific commands that will only work if you have selected the correct Rigol serie.</div>
+<li><div>The <b>transfer settings</b> are automatically pre-loaded with the default values for each oscilloscope serie.</div>
+    <div>Oszi Waveform Analyer even formats the IP address based on your network (e.g. 192.168.0.X &nbsp;versus&nbsp; 192.168.1.X)</div>
+    <div>TCP ports, RS232 settings and the VXI Link are different for each oscillosope serie.</div>
+<li><div>The <b>upper groupbox</b> sends Rigol-specific commands that will only work if you have selected the correct Rigol serie.</div>
     <div>With the buttons Run, Stop, Single, etc you can remote control the oscilloscope from the computer.</div>
     <div>Also the display of samplerate, samplepoints, etc requires Rigol-specific commands.</div>
     <div>With the button <b>Transfer</b> you can transfer the stored signals of all enabled channels to the computer.</div>
     <div>You can chose to copy only the visible screen of 1200 samples or the entire memory of 24 Mega samples.</div>
     <div>The Rigol serie DS1000DE has only memory for 1 Mega samples, so you will see other values here.</div>
-<li><div>The <b>middle part</b> allows to capture very slow processes. See <a href="#DC_Capture">DC Capture</a>.</div>
-<li><div>The <b>lower part</b> works with <b>any</b> SCPI device (oscilloscopes, function generators, multimeters, spectrum analyzers,...)</div>
-    <div>The button <b>Send</b> sends any SCPI command to any SCPI device and shows the response.</div>
+<li><div>The <b>middle groupbox</b> allows to capture very slow processes. See <a href="#DC_Capture">DC Capture</a>.</div>
+<li><div>The <b>lower groupbox</b> works with <b>any</b> SCPI device (oscilloscopes, function generators, multimeters, spectrum analyzers,...)</div>
+    <div>The button <b>Send</b> sends any SCPI command to an oscilloscope or any other SCPI device and shows the response.</div>
     <div>For example <b>:CHANNEL1:SCALE?</b> asks the vertical scale of analog channel 1. The response is: 2 Volt/raster unit.</div>
 </ol>
 
-<a name="ImplementOszi"></a>
-<h3>Current Implementation of SCPI Commands</h3>
+<p>
+<div>The following transfer modes are implemented:</div>
 
 <table class="DataTable">
-<tr><th>Oscilloscope Brand</th><th>Serie</th><th>File Import</th><th>SCPI Transfer</th></tr>
-<tr><td class="Green">Rigol</td><td>DS1000Z</td> <td>CSV</td><td>USB, VXI, TCP</td></tr>
-<tr><td class="Green">Rigol</td><td>MSO1000Z</td><td>CSV</td><td>USB, VXI, TCP</td></tr>
-<tr><td class="Green">Rigol</td><td>DS1000D</td> <td>CSV</td><td>USB (no RJ-45 plug available)</td></tr>
-<tr><td class="Green">Rigol</td><td>DS1000E</td> <td>CSV</td><td>USB (no RJ-45 plug available)</td></tr>
-<tr><td class="Green">OWON</td><td>VDS1022</td> <td>CSV, BIN, CAP&nbsp;</td><td>not yet implemented</td></tr>
-<tr><td class="Green">OWON</td><td>VDS2052</td> <td>CSV, BIN, CAP</td><td>not yet implemented</td></tr>
-<tr><td class="Green">Picoscope</td><td>3206 MSO</td> <td>CSV</td><td>not yet implemented</td></tr>
-<tr><td class="Red">Tektronix</td>           <td>TODO</td><td colspan="2">Download <a href="https://download.tek.com/manual/MSO-DPO5000-B-DPO7000-C-DPO70000-B-C-D-DX-SX-DSA70000-B-C-D-and-MSO70000-C-DX-077001019.pdf" target="_blank">Manual</a></td></tr>
-<tr><td class="Red">Rohde &amp; Schwarz</td> <td>TODO</td><td colspan="2">Download <a href="https://www.batronix.com/files/Rohde-&-Schwarz/Oscilloscope/HMO1xx2/HMO1002_1202_ProgrammingManual_en.pdf" target="_blank">Manual</a></td></tr>
-<tr><td class="Red">Agilent</td>             <td>TODO</td><td colspan="2">Download <a href="https://ridl.cfd.rit.edu/products/manuals/Agilent/oscilloscopes/6000_series_prog_guide.pdf" target="_blank">Manual</a></td></tr>
-<tr><td class="Red">Siglent</td>             <td>TODO</td><td colspan="2">Download <a href="https://www.siglent.com/upload_file/document/SDS1000%20Series&SDS2000X&SDS2000X-E_ProgrammingGuide_PG01-E02D.pdf" target="_blank">Manual</a></td></tr>
-<tr><td class="Red">Keysight</td>            <td>TODO</td><td colspan="2">Download <a href="https://www.keysight.com/us/en/assets/9018-07141/programming-guides/9018-07141.pdf?success=true" target="_blank">Manual</a></td></tr>
-<tr><td class="Red">Hantek</td>              <td>TODO</td><td colspan="2">Download <a href="https://www.hantek.com/Product/DSO4000BC/DSO4000BC_SCPI_EN.pdf" target="_blank">Manual</a></td></tr>
-<tr><td class="Red">Other Brands</td>        <td>TODO</td><td colspan="2">Use Google ...</td></tr>
+<tr><th>Mode</th><th>Description</th></tr>
+<tr><td>USB</td><td><div>SCPI commands are sent over USB in TMC (Test and Measurement Class) frames.</div>
+                    <div>Oszi Waveform Analyzer automatically finds connected TMC devices.</div>
+                    <div>USB is the only option that works <b>out of the box</b> without needing critical settings.</div>
+                    <div>But you must install the <b>IVI driver</b> in the Transfer window. See <a href="#USBConnection">below</a>.</div></div></td></tr>
+<tr><td>VXI</td><td><div>SCPI commands are sent over LAN using the VXI-11 protocol.</div>
+                    <div>The button <b>Search</b> sends a UDP request that finds connected VXI devices in the same network.</div>
+                    <div>Oszi Waveform Analyzer pre-selects the correct <b>VXI Link</b> for you. See <a href="#VXIConnection">below</a>.</div></td></tr>
+<tr><td>TCP</td><td><div>SCPI commands are sent over LAN in TCP packets as ASCII.</div>
+                    <div>Oszi Waveform Analyzer pre-selects the correct <b>TCP port</b> for you.</div>
+                    <div>It is recommended to assign a <b>static IP address</b> to your oscilloscope. See <a href="#TCPConnection">below</a>.</div></div></td></tr>
+<tr><td>RS232</td><td><div>SCPI commands are sent over RS232 or a virtual COM port as ASCII.</div>
+                      <div>Oszi Waveform Analyzer pre-selects the correct <b>RS232 settings</b> for you.</div>
+                      <div>You only have to enter the <b>baudrate</b> that is configured in your oscilloscope. See <a href="#RS232Connection">below</a>.</div></div></td></tr>
 </table>
-<p>
-<div>Now it is up to you to implement further oscilloscope models.</div>
-<div>Download the programming manual that explains the SCPI commands.</div>
-<div>Open the above Transfer window and send the SCPI commands manually to see what your scope responds.</div>
-<div>I have designed Oszi Waveform Analyzer from the first day to be <b>easily expandable</b>.</div>
-<div>Clone the Rigol classes, rename and modify them and register the new oscilloscope serie in the <b>TransferManager</b>.</div>
+
 
 <a name="ScpiLibrary"></a>
 <h3>The SCPI Library for C# Programmers</h3>
 
-<div>As this project is open source you can use the <b>class SCPI</b> also in your own C# project.</div>
-<div>It allows you to communicate with any SCPI device over USB, VXI or TCP.</div>
+<div>As this project is open source you can use the <b>class SCPI</b> also in your own C# project for Windows or Linux.</div>
+<div>It allows you to communicate with any SCPI device over USB, VXI, TCP or RS232.</div>
 <div>My code will keep your harddisk clean. You do not need to install the NI-VISA monster of 1 Gigabyte.</div>
 <div>In the class SCPI you can enable <code>TRACE_OUTPUT</code> to see the SCPI commands and responses.</div>
 <div>In the subfolder <a href="https://github.com/Elmue/Oszi-Waveform-Analyzer/tree/main/Documentation" target="_blank">Documentation</a> you find a <b>logfile</b> of the SCPI commands and responses of my scope.</div>
 
 
 <a name="ConnectionModes"></a>
-<h1>Connection over USB, VXI, TCP</h1>
+<h1>Connection over USB, VXI, TCP, RS232</h1>
 
-<div>Oszi Waveform Analyzer offers 3 options to connect to your oscilloscope:</div>
+<div>Oszi Waveform Analyzer offers 4 options to connect to your oscilloscope:</div>
 
 <a name="USBConnection"></a>
 <h3>Option 1: USB Connection</h3>
 
 <div>USB is the easiest connection with the fastest transfer.</div>
-<div>All you have to do is connect the USB cable and install the IVI driver.</div>
+<div>All you have to do is connect the USB cable and install the IVI driver in the Transfer window.</div>
 <p>
 <div>But if you have an oscilloscope that implements a proprietary USB interface the IVI standard may not be supported.</div>
 <div>Then Oszi Waveform Analyzer will tell you that no USB device of type 'Test and Measurement Class' was found.</div>
@@ -669,6 +786,8 @@
 <div><span class="Error">ATTENTION:</span> If you have an oscilloscope from Rigol that uses the unintelligent default IP address </div>
 <div>169.254.109.240 and your network is 192.168.XXX.YYY, the broadcast request will be blocked by the network mask.</div>
 <div>I recommend to configure a <b>static IP</b> address. Also DHCP mode does <a href="#BugDHCP">not work</a> correctly in a Rigol oscilloscope.</div>
+<p>
+<div><span class="Error">ATTENTION:</span> Rigol Oscilloscopes are so stupid that a network connection fails while the USB cable is plugged in.</div>
 <p>
 <div>The VXI-11 protocol allows an 'Instrument' (oscilloscope) to contain multiple logical 'Devices':</div>
 <p>
@@ -703,9 +822,21 @@
 
 <div>Some oscilloscopes additionally accept SCPI commands over a plain TCP connection.</div>
 <div>In this case no complex protocol like VXI-11 is used. The SCPI text commands are simply put into TCP packets.</div>
-<div>My Rigol listens on TCP <b>port 5555</b> for SCPI commands. But this port is completely <b>undocumented</b>.</div>
+<div>The Rigol DS1000Z serie listens on TCP <b>port 5555</b> for SCPI commands. But this port is completely <b>undocumented</b>.</div>
 <div>Your scope may use another port or not support this communication at all.</div>
 <div>You can use a <b>port scanner</b> to find all listening ports.</div>
+<p>
+<div><span class="Error">ATTENTION:</span> Using the TCP connection on a stupid Rigol requires to disconnect the USB cable and reboot the oscilloscope!</div>
+
+<a name="RS232Connection"></a>
+<h3>Option 4: RS232 Connection</h3>
+
+<div>Older oscilloscopes and interface cards like the Hameg HO720 have a physical RS232 port.</div>
+<div>You must also use option <b>RS232</b> in the Transfer window when the oscillosope has a <b>virtual COM port</b> over USB.</div>
+<div>Oszi Waveform Analyzer pre-selects the correct baudrate and serial settings for you model when you first open the Transfer window.</div>
+<div>The RS232 setting <code>8N2 RTS</code> means 8 data bits, No parity, 2 stop bits and RTS handshake.</div>
+<div>If you get a <b>timeout error</b> with RTS handshake, the oscilloscope probably did not activate the CTS line.</div>
+<div>For the Hameg oscilloscopes you need a 1:1 RS232 cable that does not have crossed wires (RxD/TxD and RTS/CTS).</div>
 
 
 <a name="TransferSpeed"></a>
@@ -718,6 +849,8 @@
 <div>If your scope implements Fast Ethernet, the maximum transfer rate is 100 MBit/sec.</div>
 <div>If your scope, router and computer support Gigabit Ethernet, the maximum transfer rate is 1 GBit/sec.</div>
 <div>If your computer connects over WIFI you will have a significantly worse performance.</div>
+<div><b><u>RS232</u>:</b></div>
+<div>If your use 115200 baud the transfer speed is 11 kB/s.</div>
 <p>
 <div>My Rigol has 480 MBit USB and 100 MBit ethernet and a waveform transfer is 4 times faster over USB.</div>
 <div>And plain TCP transfer is approx 30% faster than VXI transfer.</div>
@@ -731,13 +864,52 @@
 <div>This shows how intelligent Rigol engineers are. The theoretically possible network speed is wasted.</div>
 <div>You find a logfile of VXI transfer in the subfolder <a href="https://github.com/Elmue/Oszi-Waveform-Analyzer/tree/main/Documentation" target="_blank">Documentation</a>.</div>
 
+<a name="AudioRecording"></a>
+<h1>Audio Recording</h1>
+
+<div>Oszi Waveform Analyzer can also capture audio input from the <b>soundcard</b>.</div>
+<div>This allows to analyze signals of low frequencies even if you <b>do not have an oscilloscope</b>.</div>
+<div>Here you see how I have connected a K-Line signal to the microphone input of a Realtek soundcard.</div>
+
+<table><tr>
+<td>
+    <table class="TblImage">
+        <td align="center"><b>Digital capture without oscilloscope</b></td>
+        <tr><td><img src="Images/KLineToMicrophone.png" alt="K-Line recording over Microphone input" width="320" height="150"></td></tr>
+        <tr><td class="Center"><span class="Link" onClick="ShowFullSize(this, 0, 'Images/KLineToMicrophone.png')">Show Full Size</span></td></tr>
+    </table>
+</td>
+<td>&nbsp;</td>
+<td>
+    <table class="TblImage">
+        <td align="center"><b>Audio Recording</b></td>
+        <tr><td><img src="Images/AudioRecording.png" alt="Oszi Waveform Analyzer Audio Recording" width="167" height="150"></td></tr>
+        <tr><td class="Center"><span class="Link" onClick="ShowFullSize(this, 0, 'Images/AudioRecording.png')">Show Full Size</span></td></tr>
+    </table>
+</td>
+<td>&nbsp;</td>
+<td>
+    <table class="TblImage">
+        <td align="center"><b>Signal from microphone input</b></td>
+        <tr><td><img src="Images/KLineOverSoundcard.png" alt="K-Line Signal Audio Recording" width="242" height="150"></td></tr>
+        <tr><td class="Center"><span class="Link" onClick="ShowFullSize(this, 0, 'Images/KLineOverSoundcard.png')">Show Full Size</span></td></tr>
+    </table>
+</td>
+</tr></table>
+<div>The capacitors in the soundcard discharge slowly when there is a pause in the signal.</div>
+<div>This results in a signal that is not perfect. You must test some <b>threshold</b> values in the A/D converter to get a clean digital signal.</div>
+<div>Select <b>Samplerate = 192 k</b> which is normally the highest supported value for ordinary soundcards.</div>
+<div>Audio input is normalized to voltages between -1 Volt and + 1 Volt.</div>
+<div>You can also capture audio signals and display the stereo channels in the <a href="#XYPlot">X/Y Plot</a>.</div>
+
+
 <a name="StoreDisk"></a>
-<h1>Storing Waveforms on Disk</h1>
+<h1>Waveform File Formats</h1>
 
 <a name="CsvFiles"></a>
 <h3>CSV Files</h3>
 
-<div>Most oscilloscopes offer the option to store the capture in a CSV file.</div>
+<div>Modern oscilloscopes offer the option to store the capture in a CSV file on a USB stick.</div>
 <div>The rows of the CSV file contain the analog voltages as floating point values, each channel in it's own column.</div>
 <div>The problem is how to transfer the X axis settings, like timestamp and samplerate in a CSV file?</div>
 <div>Here each manufacturer cooks his own soup.</div>
@@ -813,11 +985,11 @@
 <h3>OSZI Files</h3>
 
 <div>So, how to save signals using few disk space and using a simple file format?</div>
-<div>As this file format does not exist, I created it.</div>
+<div>As this file format did not exist, I had to created it.</div>
 <div>When you start Oszi Waveform Analyzer it registers the <b>file extension *.oszi</b></div>
 <div>What does OSZI stand for? "Oscilloscope" is in German "Oszilloskop" and the abbreviation is "Oszi".</div>
 <p>
-<div>The OSZI file format is <b>open-source</b> and free of any license.</div>
+<div>My OSZI file format is <b>open-source</b> and free of any license.</div>
 <div>An OSZI file uses the <b>maximum compression</b> that is possible, but it is still a <b>lossless</b> format:</div>
 <ul>
 <li><div>How much disk space an <b><u>Analog Channel</u></b> requires depends on the analog resolution of the A/D converter in the oscilloscope.</div>
@@ -852,6 +1024,14 @@
 <div>The folder in which you have double clicked the file will be your new <b>working folder</b> for further open/save operations.</div>
 
 
+<a name="AudioFiles"></a>
+<h3>Audio Files</h3>
+
+<div>Oszi Waveform Analyzer can import files with the lossless audio formats <b>WAV, FLAC, AIFF, M4A, MP4, WMA</b>.</div>
+<div>The audio samples are normalized to -1.0 Volt to +1.0 Volt (0 dBFS). The time axis uses the sample rate of the file.</div>
+<div>Oszi Waveform Analyzer can display audio files in the <a href="#XYPlot">X/Y Plot</a> (Left channel = X, Right channel = Y).</div>
+
+
 <a name="OtherFiles"></a>
 <h3>Other File Formats</h3>
 
@@ -863,13 +1043,13 @@
 <a name="SaveOptions"></a>
 <h3>Save File Options</h3>
 <p>
-<img src="Images/SaveOptions.png" width="386" height="123" alt="Oszi Waveform Analyzer - Save File Options">
+<img src="Images/SaveOptions.png" width="386" height="138" alt="Oszi Waveform Analyzer - Save File Options">
 <div>A <b>Display Factor</b> of 1 means that one sample corresponds to one pixel on the screen.</div>
 <ul>
 <li><div><b>Oszi File Zip</b>: Save the capture as <b>OSZI</b> file with additional ZIP compression.</div>
 <li><div><b>Oszi File Plain</b>: Save the capture as <b>OSZI</b> file without ZIP compression.</div>
 <li><div><b>Decoder Result</b>: Save the text output of the decoder and post decoder into a <b>RTF</b> file.</div>
-<li><div><b>Screenshot</b>: Save a screenshot of the currently visible signals as <b>PNG</b> file.</div>
+<li><div><b>Screenshot</b>: Save a screenshot of the currently visible signals, X/Y plot or FFT as <b>PNG</b> file.</div>
 <li><div><b>Full Image</b>: Save a <b>PNG</b> image of the entire signal, also the part that is not visible on the screen.</div>
 </ul>
 <div>If the checkbox <b>Apply Factor</b> is NOT checked the capture is stored in full resolution (e.g. 24 Mega samples) into the OSZI file.</div>
@@ -878,6 +1058,8 @@
 <div>Below the combobox "Display Factor" you see the samples (37156) that the OSZI file will contain.</div>
 <div><span class="Error">ATTENTION:</span> If you reduce the resolution too much, some decoders will not work anymore.</div>
 <div>For example the UART and CAN bus decoders need at least 12 samples per bit for a reliable detection.</div>
+<p>
+<div>All controls are explained in a <b>tooltip</b> when you hover with the mouse over it.</div>
 
 
 <a name="Frames"></a>
@@ -901,7 +1083,12 @@
 
 <a name="Download"></a>
 <h1>Download &amp; New Versions</h1>
-
+<div>A tremendous work has been done. Now it is up to you to implement further oscilloscope models.</div>
+<div>Download the programming manual that explains the SCPI commands.</div>
+<div>Open the <a href="#TransferWindow">Transfer window</a> and send the SCPI commands manually to see what your scope responds.</div>
+<div>I have designed Oszi Waveform Analyzer from the first day to be <b>easily expandable</b>.</div>
+<div>Clone the Rigol classes, rename and modify them and register the new oscilloscope serie in the <b>TransferManager</b>.</div>
+<p>
 <div>If you have experience in C# programming you can add new features to the next version.</div>
 <ul>
 <li><div>Transfer from new <b>oscilloscope models</b> can be added to the class TransferManager.</div>
@@ -930,7 +1117,7 @@
 </div>
 
 <a name="BuyRigol"></a>
-<h1>Should I buy a Rigol Oscilloscope?</h1>
+<h1>Appendix: Should I buy a Rigol Oscilloscope?</h1>
 
 <div>Rigol is a Chinese company that has absolutely <b>no Quality Control</b>.</div>
 <div>They sell their products as they are: Full of <b>ugly bugs</b>.</div>

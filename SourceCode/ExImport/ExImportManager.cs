@@ -47,10 +47,14 @@ using System.Diagnostics;
 using Capture           = OsziWaveformAnalyzer.Utils.Capture;
 using Channel           = OsziWaveformAnalyzer.Utils.Channel;
 using eRegKey           = OsziWaveformAnalyzer.Utils.eRegKey;
-using ComboPath         = OsziWaveformAnalyzer.Utils.ComboPath;
+using ComboPath         = OsziWaveformAnalyzer.ComboBoxEx.ComboPath;
+using eComboImg         = OsziWaveformAnalyzer.ComboBoxEx.eComboImg;
 using Utils             = OsziWaveformAnalyzer.Utils;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
+using eTab              = OsziWaveformAnalyzer.FormMain.eTab;
 using TransferManager   = Transfer.TransferManager;
+using ComboBoxEx        = OsziWaveformAnalyzer.ComboBoxEx;
+using ComboItem         = OsziWaveformAnalyzer.ComboBoxEx.ComboItem;
 
 namespace ExImport
 {
@@ -93,23 +97,34 @@ namespace ExImport
 
         #endregion
 
-        public static void FillComboSaveAs(ComboBox i_ComboSaveAs)
+        public static void FillComboSaveAs(ComboBoxEx i_ComboSaveAs)
         {
             i_ComboSaveAs.Sorted = false; // IMPORTANT!
+            i_ComboSaveAs.BeginUpdate();
             i_ComboSaveAs.Items.Clear();
             foreach (eSaveAs e_Save in Enum.GetValues(typeof(eSaveAs)))
             {
+                eComboImg e_Image;
+                switch (e_Save)
+                {
+                    case eSaveAs.Screenshot:
+                    case eSaveAs.FullImage:     e_Image = eComboImg.Image;   break;
+                    case eSaveAs.OsziFilePlain:
+                    case eSaveAs.OsziFileZip:   e_Image = eComboImg.OSZI;    break;
+                    case eSaveAs.RtfFile:       e_Image = eComboImg.Decoder; break;
+                    case eSaveAs.WfmFile:       e_Image = eComboImg.Binary;  break;
+                    default: throw new Exception("No icon defined");
+                }
+
                 String s_Descript = Utils.GetDescriptionAttribute(e_Save);
-                i_ComboSaveAs.Items.Add(s_Descript);
+                i_ComboSaveAs.Items.Add(new ComboItem(s_Descript, e_Image));
             }
+            i_ComboSaveAs.EndUpdate();
             Utils.ComboAdjustDropDownWidth(i_ComboSaveAs);
             i_ComboSaveAs.SelectedIndex = 0;
         }
 
         // ===================================================================================================
-
-        public eSaveAs me_SaveAs;
-        public int     ms32_SaveSteps; // from ComboBox Factor "/ 5" --> ms32_SaveSteps = 5 --> save every fifth sample to disk
 
         TextBox   mi_TextFileName;
         ComboBox  mi_ComboOsziModel;
@@ -121,7 +136,6 @@ namespace ExImport
         {
             mi_TextFileName   = i_TextFileName;
             mi_ComboOsziModel = i_ComboOsziModel;
-            ms32_SaveSteps    = 1;
 
             // Test encoding and decoding of digital channels in Mask mode and RLE mode.
             /*
@@ -145,20 +159,19 @@ namespace ExImport
             mi_TextFileName.Text = Path.GetFileNameWithoutExtension(s_Path);
 
             String s_Ext = Path.GetExtension(s_Path).ToLower();
-            switch (s_Ext)
-            {
-                case ".bin":
-                case ".cap":
-                case ".csv":  return TransferManager.ParseVendorFile(s_Path, mi_ComboOsziModel, ref b_Abort);
-                case ".oszi": return OsziFile.Load(s_Path, ref b_Abort);
-                case ".wfm":  ShowWfmErrorBox(); return null;
 
-                // TODO: You can implement further file formats here
+            eComboImg e_Dummy = (eComboImg)(-1);
+            if (TransferManager.IsInputFile(s_Ext, ref e_Dummy))
+                return TransferManager.ParseVendorFile(s_Path, mi_ComboOsziModel, ref b_Abort);
 
-                default: 
-                    Debug.Assert(false, "Programming Error: Invalid Import file extension.");
-                    return null;
-            }
+            if (OsziFile.IsInputFile(s_Ext, ref e_Dummy))
+                return OsziFile.LoadFile(s_Path, ref b_Abort);
+
+            if (AudioFile.IsInputFile(s_Ext, ref e_Dummy))
+                return AudioFile.LoadFile(s_Path, ref b_Abort);
+
+            Debug.Assert(false, "Programming Error: Invalid Import file extension.");
+            return null;
         }
 
         // ===================================================================================================
@@ -166,17 +179,39 @@ namespace ExImport
         /// <summary>
         /// Called when button "Save" is clicked
         /// </summary>
-        public void Export(String s_Path)
+        public void Export(String s_Path, eSaveAs e_SaveAs, eTab e_Tab, int s32_SaveSteps, bool b_Shrink8Bit)
         {
             String s_Saved = "";
-            switch (me_SaveAs)
+            switch (e_SaveAs)
             {
-                case eSaveAs.OsziFilePlain: s_Saved = OsziFile.Save(OsziPanel.CurCapture, s_Path, false, ms32_SaveSteps); break;
-                case eSaveAs.OsziFileZip:   s_Saved = OsziFile.Save(OsziPanel.CurCapture, s_Path, true,  ms32_SaveSteps); break;
-                case eSaveAs.Screenshot:    s_Saved = Utils.OsziPanel.SaveAsImage(s_Path, false); break;
-                case eSaveAs.FullImage:     s_Saved = Utils.OsziPanel.SaveAsImage(s_Path, true);  break;
-                case eSaveAs.RtfFile:       s_Saved = Utils.FormMain.SaveRichText(s_Path); break;
-                case eSaveAs.WfmFile:       ShowWfmErrorBox(); return;
+                case eSaveAs.OsziFilePlain: 
+                    s_Saved = OsziFile.Save(Utils.CurCapture, s_Path, false, s32_SaveSteps, b_Shrink8Bit); 
+                    break;
+
+                case eSaveAs.OsziFileZip:
+                    s_Saved = OsziFile.Save(Utils.CurCapture, s_Path, true,  s32_SaveSteps, b_Shrink8Bit); 
+                    break;
+
+                case eSaveAs.Screenshot:
+                    switch (e_Tab)
+                    {
+                        case eTab.XYPlot: s_Saved = Utils.PanelXY  .SaveAsImage(s_Path);        break;
+                        case eTab.FFT:    s_Saved = Utils.PanelFFT .SaveAsImage(s_Path);        break;
+                        default:          s_Saved = Utils.PanelOszi.SaveAsImage(s_Path, false); break;
+                    }
+                    break;
+
+                case eSaveAs.FullImage:
+                    s_Saved = Utils.PanelOszi.SaveAsImage(s_Path, true);
+                    break;
+
+                case eSaveAs.RtfFile:
+                    s_Saved = Utils.FormMain.SaveRichText(s_Path); 
+                    break;
+
+                case eSaveAs.WfmFile:
+                    ShowWfmErrorBox(); 
+                    return;
 
                 // TODO: You can implement further file formats here
 
@@ -192,7 +227,7 @@ namespace ExImport
         /// <summary>
         /// returns the Save path or null on error
         /// </summary>
-        public String GetSavePath()
+        public String GetSavePath(eSaveAs e_SaveAs, eTab e_Tab)
         {
             // Cut ".oszi" that the user may have pasted
             mi_TextFileName.Text = mi_TextFileName.Text.Trim();
@@ -207,16 +242,16 @@ namespace ExImport
             }
 
             String s_Path = Path.Combine(Utils.SampleDir, mi_TextFileName.Text);
-            switch (me_SaveAs)
+            switch (e_SaveAs)
             {
                 case eSaveAs.OsziFilePlain:
                 case eSaveAs.OsziFileZip:  s_Path += ".oszi"; break;
-                case eSaveAs.Screenshot:
-                case eSaveAs.FullImage:    s_Path += ".png";  break;
                 case eSaveAs.RtfFile:      s_Path += ".rtf";  break;
+                case eSaveAs.Screenshot:
+                case eSaveAs.FullImage:    s_Path += " - " + e_Tab + ".png";  break;
                 case eSaveAs.WfmFile:      ShowWfmErrorBox(); return null;
                 default: 
-                    Debug.Assert(false, "Programming Error: Invalid Save option: " + me_SaveAs);
+                    Debug.Assert(false, "Programming Error: Invalid Save option: " + e_SaveAs);
                     return null;
             }
 
@@ -233,16 +268,24 @@ namespace ExImport
             return s_Path;
         }
 
-        public void LoadComboInput(ComboBox i_ComboInput)
+        public void FillComboInput(ComboBoxEx i_ComboInput)
         {
             try
             {
-                List<String> i_Extensions = new List<String>(new String[]{ ".bin", ".cap", ".csv", ".oszi", ".wfm"});
+                List<String> i_AllFiles = new List<String>();
+                i_AllFiles.AddRange(Directory.EnumerateFiles(Utils.SampleDir));   // default folder
+                if (Directory.Exists(Utils.UserDir))
+                    i_AllFiles.AddRange(Directory.EnumerateFiles(Utils.UserDir)); // user selected folder
 
+                i_ComboInput.BeginUpdate();
                 i_ComboInput.Items.Clear();
-                foreach (String s_Path in Directory.EnumerateFiles(Utils.SampleDir))
+                foreach (String s_Path in i_AllFiles)
                 {
-                    if (i_Extensions.Contains(Path.GetExtension(s_Path).ToLower()))
+                    eComboImg e_Dummy = (eComboImg)(-1);
+                    String s_Ext = Path.GetExtension(s_Path).ToLower();
+                    if (TransferManager.IsInputFile(s_Ext, ref e_Dummy) ||
+                        OsziFile       .IsInputFile(s_Ext, ref e_Dummy) ||
+                        AudioFile      .IsInputFile(s_Ext, ref e_Dummy))
                     {
                         i_ComboInput.Items.Add(new ComboPath(s_Path));
                     }
@@ -250,15 +293,17 @@ namespace ExImport
 
                 if (i_ComboInput.Items.Count > 0)
                 {
+                    i_ComboInput.EndUpdate();
                     Utils.FormMain.PrintStatus(Utils.NO_SAMPLES_LOADED, Color.Black);
                 }
                 else
                 {
                     // null --> display "No files found"
                     i_ComboInput.Items.Add(new ComboPath(null));
+                    i_ComboInput.EndUpdate();
+
                     i_ComboInput.SelectedIndex = 0;
                 }
-
                 Utils.ComboAdjustDropDownWidth(i_ComboInput);
             }
             catch (Exception Ex)
@@ -267,12 +312,12 @@ namespace ExImport
             }
         }
 
-        void ShowWfmErrorBox()
+        public static void ShowWfmErrorBox()
         {
             MessageBox.Show(Utils.FormMain, "The WFM file format is used by some companies. "
                                           + "Documentation is available from Tektronix, but not from Rigol. "
                                           + "Rigol is not able to develop anything that is consistent. "
-                                          + "There is a different WFM file header for each of their oscillosope series! "
+                                          + "There is a different WFM file header for each of their oscillosope series. "
                                           + "And among each serie there are different versions of the same file header. "
                                           + "To implement WFM format many totally different file formats would have to be implemented. "
                                           + "And tomorrow Rigol will invent another different format again. " 

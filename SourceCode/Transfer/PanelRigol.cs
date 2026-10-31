@@ -9,6 +9,8 @@ using System.Windows.Forms;
 using WForms            = System.Windows.Forms;
 using ITransferPanel    = Transfer.TransferManager.ITransferPanel;
 using eOsziSerie        = Transfer.TransferManager.eOsziSerie;
+using OsziFeatures      = Transfer.TransferManager.OsziFeatures;
+using eRs232Settg       = Transfer.TransferManager.eRs232Settg;
 using eRegKey           = OsziWaveformAnalyzer.Utils.eRegKey;
 using Utils             = OsziWaveformAnalyzer.Utils;
 using Capture           = OsziWaveformAnalyzer.Utils.Capture;
@@ -17,23 +19,42 @@ using eOperation        = Transfer.Rigol.eOperation;
 using OsziModel         = Transfer.Rigol.OsziModel;
 using OsziConfig        = Transfer.Rigol.OsziConfig;
 using ScpiCombo         = Transfer.SCPI.ScpiCombo;
+using eConnectMode      = Transfer.SCPI.eConnectMode;
 using PlatformManager   = Platform.PlatformManager;
+using AbortException    = OsziWaveformAnalyzer.Utils.AbortException;
 
 namespace Transfer
 {
     public partial class PanelRigol : UserControl, ITransferPanel
     {
-        SCPI         mi_Scpi;
         Rigol        mi_Rigol;
         eOsziSerie   me_OsziSerie;
         FormTransfer mi_Form;
         WForms.Timer mi_RefreshTimer;
 
-        // ---------- DC Capture ------------
-
-        WForms.Timer mi_CaptureTimer;
-        Capture      mi_DcCapture;
-        int          ms32_CaptureIdx;
+        public OsziFeatures OsziFeatures
+        {
+            get 
+            { 
+                OsziFeatures i_Features = new OsziFeatures();
+                switch (me_OsziSerie)
+                {
+                    case eOsziSerie.Rigol_1000DE: 
+                        i_Features.me_SupportedModes = eConnectMode.USB | eConnectMode.RS232;
+                        i_Features.ms_Rs232Baud      = "38400";
+                        i_Features.ms_Rs232Settg     = "8N1 None";
+                        break;
+                    case eOsziSerie.Rigol_1000Z:  
+                        i_Features.me_SupportedModes = eConnectMode.USB | eConnectMode.TCP | eConnectMode.VXI;
+                        i_Features.ms_TcpPort        = "5555";
+                        i_Features.ms_VxiLink        = "inst0";
+                        break;
+                    default: 
+                        throw new Exception("Invalid OsziSerie");
+                }
+                return i_Features;
+            }
+        }
 
         public PanelRigol()
         {
@@ -50,31 +71,21 @@ namespace Transfer
             mi_RefreshTimer.Tick += new EventHandler(OnRefreshTimer);
             mi_RefreshTimer.Interval = 500;
 
-            mi_CaptureTimer = new WForms.Timer();
-            mi_CaptureTimer.Tick += new EventHandler(OnCaptureTimer);
-
             lblSerie.Text = Utils.GetDescriptionAttribute(e_OsziSerie);       
             ClearGroupBox();
 
-            if (Utils.RegReadBool(eRegKey.TransferMemory))
+            if (Utils.RegReadBool(eRegKey.TransferMemory, false, me_OsziSerie))
                 radioMemory.Checked = true;
             else
                 radioScreen.Checked = true;   
-
-            comboInterval .Text = Utils.RegReadString(eRegKey.CaptureInterval);
-            comboTotalTime.Text = Utils.RegReadString(eRegKey.CaptureTotTime);
-
-            if (comboInterval .SelectedIndex < 0) comboInterval .SelectedIndex = 0;
-            if (comboTotalTime.SelectedIndex < 0) comboTotalTime.SelectedIndex = 0;
         }
 
         // Open the connection to the oscilloscope
         // May throw
-        public void OnOpenDevice(SCPI i_Scpi)
+        public void OpenDevice()
         {
-            mi_Scpi  = i_Scpi;
             mi_Rigol = new Rigol(me_OsziSerie);
-            mi_Rigol.Connect(mi_Form, i_Scpi); // may throw
+            mi_Rigol.Connect(mi_Form); // may throw
 
             LoadGroupBox();
 
@@ -82,7 +93,7 @@ namespace Transfer
         }
 
         // Close the connection to the oscilloscope
-        public void OnCloseDevice()
+        public void CloseDevice()
         {
             // Close the connection
             if (mi_Rigol != null)
@@ -91,7 +102,6 @@ namespace Transfer
                 mi_Rigol = null;
             }
 
-            mi_CaptureTimer.Stop();
             mi_RefreshTimer.Stop();
             ClearGroupBox();
         }
@@ -175,7 +185,6 @@ namespace Transfer
             btnForceTrig.BackColor = Color.BlanchedAlmond;
 
             groupTransfer .Enabled = true;
-            groupDcCapture.Enabled = true;
         }
 
         void ClearGroupBox()
@@ -187,7 +196,6 @@ namespace Transfer
             lblSampleRate  .Text = "";
             lblSamplePoints.Text = "";
             lblTotDuration .Text = "";
-            lblProgress    .Text = "";
 
             btnReset    .BackColor = SystemColors.Control;
             btnClear    .BackColor = SystemColors.Control;
@@ -198,10 +206,11 @@ namespace Transfer
             btnForceTrig.BackColor = SystemColors.Control;
 
             groupTransfer .Enabled = false;
-            groupDcCapture.Enabled = false;
         }
 
-        // ==========================================================
+        // ==========================================================================
+        //                             Operation Buttons 
+        // ==========================================================================
 
         private void btnClear_Click(object sender, EventArgs e)
         {
@@ -250,23 +259,25 @@ namespace Transfer
             Utils.EndBusyOperation(mi_Form);
         }
 
-        // ==========================================================
+        // ==========================================================================
+        //                             Waveform Transfer
+        // ==========================================================================
 
         private void btnTransfer_Click(object sender, EventArgs e)
         {
             if (btnTransfer.Text == "Abort")
             {
-                mi_Rigol.AbortTransfer();
+                mi_Form.Progr.AbortTransfer = true;
                 return;
             }
 
-            if (Utils.FormMain.HasUnsavedChanges())
+            if (!Utils.StartBusyOperation(mi_Form)) // FIRST
                 return;
 
-            if (!Utils.StartBusyOperation(mi_Form))
+            if (Utils.FormMain.HasUnsavedChanges()) // AFTER
                 return;
 
-            Utils.RegWriteBool(eRegKey.TransferMemory, radioMemory.Checked);
+            Utils.RegWriteBool(eRegKey.TransferMemory, radioMemory.Checked, me_OsziSerie);
 
             mi_RefreshTimer.Stop();
             btnTransfer.Text = "Abort";
@@ -274,6 +285,7 @@ namespace Transfer
 
             try
             {
+                mi_Form.Progr.AbortTransfer = false;
                 Capture i_Capture = mi_Rigol.TransferAllChannels(radioMemory.Checked);
                 if (i_Capture != null)
                 {
@@ -284,6 +296,10 @@ namespace Transfer
                 {
                     mi_Form.PrintStatus("Aborted", Color.Red);
                 }
+            }
+            catch (AbortException Ex)
+            {
+                mi_Form.PrintStatus(Ex.Message, Color.Red);
             }
             catch (Exception Ex)
             {
@@ -296,7 +312,28 @@ namespace Transfer
             Utils.EndBusyOperation(mi_Form);
         }
 
-        // ==========================================================
+        // ==========================================================================
+        //                                DC Capture
+        // ==========================================================================
+
+        // The user has clicked the "DC Capture" button in FormTransfer.
+        // d_Interval and d_TotTime are the values that the user has entered in FormTransfer.
+        public Capture StartDcCapture(decimal d_Interval, decimal d_TotTime)
+        {
+            return mi_Rigol.StartDcCapture(d_Interval, d_TotTime);
+        }
+
+        // The timer is due --> add a new sample to the capture.
+        // i_DcCapture is the Capture that was returned from OnStartDcCapture()
+        // s32_CaptureIdx is the sample index in i_DcCapture where to store the new analog value.
+        public void CaptureDcSample(Capture i_DcCapture, int s32_CaptureIdx)
+        {
+            mi_Rigol.CaptureDcSample(i_DcCapture, s32_CaptureIdx);
+        }
+
+        // ==========================================================================
+        //                                Manual Command
+        // ==========================================================================
 
         /// <summary>
         /// In case of error an oscilloscope which supports :SYSTEM:ERROR? can display additional information (serie DS1000Z)
@@ -312,7 +349,7 @@ namespace Transfer
                 {
                 }
 
-                i_TextReponse.Text = mi_Scpi.SendStringCommand(s_Command, 2000);
+                i_TextReponse.Text = mi_Form.Scpi.SendStringCommand(s_Command, 2000);
                 i_TextReponse.ForeColor = Color.Black;
             }
             catch (TimeoutException)
@@ -336,112 +373,6 @@ namespace Transfer
                 i_TextReponse.ForeColor = Color.Red;
             }
             OnRefreshTimer(null, null);
-        }
-
-        // ==========================================================================
-        //                                  Capture
-        // ==========================================================================
-
-        private void btnCapture_Click(object sender, EventArgs e)
-        {
-            if (btnCapture.Text == "Abort")
-            {
-                StopCapture();
-                mi_Form.PrintStatus("Capture aborted", Color.Black);
-                lblProgress.Text = "";
-                return;
-            }
-
-            if (!Utils.StartBusyOperation(mi_Form))
-                return;
-
-            try
-            {
-                Utils.RegWriteString(eRegKey.CaptureInterval, comboInterval .Text);
-                Utils.RegWriteString(eRegKey.CaptureTotTime,  comboTotalTime.Text);
-
-                decimal d_Interval = Utils.ParseInterval(comboInterval .Text); // in seconds
-                decimal d_TotTime  = Utils.ParseInterval(comboTotalTime.Text); // in seconds
-
-                // s64_Interval = 1 second   ... 5 minutes
-                // s64_TotTime  = 10 minutes ... 10 days
-                mi_DcCapture = mi_Rigol.CreateDcCapture(d_Interval, d_TotTime); // throws
-                ms32_CaptureIdx = 0;
-
-                Utils.FormMain.StoreNewCapture(mi_DcCapture);
-
-                comboInterval .Enabled = false;
-                comboTotalTime.Enabled = false;
-                btnCapture.Text = "Abort";
-                mi_Form.PrintStatus("Do not touch the oscilloscope while capturing!", Color.Red);
-
-                mi_CaptureTimer.Interval = (int)(d_Interval * 1000);
-                mi_CaptureTimer.Start();    // FIRST
-                OnCaptureTimer(null, null); // AFTER (stops timer on error)
-            }
-            catch (Exception Ex)
-            {
-                StopCapture();                       // FIRST (stop timer)
-                Utils.ShowExceptionBox(mi_Form, Ex); // NEXT  (show messagebox)
-                lblProgress.Text = "";               // LAST  (remove progress where error occurred)
-            }
-        }
-
-        void OnCaptureTimer(object sender, EventArgs e)
-        {
-            try
-            {
-                // Avoid that the operating system goes into sleep mode while capturing data
-                PlatformManager.Instance.PreventSleep();
-
-                mi_Rigol.AddDcSample(mi_DcCapture, ms32_CaptureIdx); // throws
-                Utils.OsziPanel.RecalculateEverything();
-
-                // Increment only if AddDcSample() did not throw an exception
-                ms32_CaptureIdx ++;
-
-                if (ms32_CaptureIdx == mi_DcCapture.ms32_Samples)
-                {
-                    StopCapture();   // FIRST
-                    mi_Form.Close(); // AFTER
-                    return;
-                }
-
-                String s_Progess = String.Format("{0}%  ({1} samples of {2})", 
-                                                 100 * ms32_CaptureIdx / mi_DcCapture.ms32_Samples,
-                                                 ms32_CaptureIdx, mi_DcCapture.ms32_Samples);
-
-                decimal d_ElapsedMilli = (ms32_CaptureIdx - 1) * mi_CaptureTimer.Interval;
-                if (d_ElapsedMilli > 0)
-                    s_Progess += "  Elapsed: " + Utils.FormatTimePico(d_ElapsedMilli / 1000 * Utils.PICOS_PER_SECOND);
-
-                lblProgress.Text = s_Progess;
-            }
-            catch (Exception Ex)
-            {
-                StopCapture();                       // FIRST (stop timer)
-                Utils.ShowExceptionBox(mi_Form, Ex); // NEXT  (show messagbox)
-                lblProgress.Text = "";               // LAST  (remove progress where error occurred)
-            }
-        }
-
-        void StopCapture()
-        {
-            mi_CaptureTimer.Stop();
-            btnCapture .Text = "DC Capture";
-            comboInterval .Enabled = true;
-            comboTotalTime.Enabled = true;
-
-            if (mi_DcCapture != null)
-            {
-                // If the user aborts capturing --> remove all unused samples that have zero Volt.
-                mi_DcCapture.ms32_Samples = Math.Max(Utils.MIN_VALID_SAMPLES, ms32_CaptureIdx);
-                Utils.FormMain.StoreNewCapture(mi_DcCapture);
-                mi_DcCapture = null;
-            }
-
-            OnRefreshTimer(null, null);
-            Utils.EndBusyOperation(mi_Form);
         }
     }
 }

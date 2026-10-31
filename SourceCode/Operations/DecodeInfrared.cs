@@ -57,7 +57,7 @@ using SmplMark          = OsziWaveformAnalyzer.Utils.SmplMark;
 using eMark             = OsziWaveformAnalyzer.Utils.eMark;
 using GraphMenuItem     = Operations.OperationManager.GraphMenuItem;
 using Utils             = OsziWaveformAnalyzer.Utils;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 using RtfDocument       = OsziWaveformAnalyzer.RtfDocument;
 using RtfBuilder        = OsziWaveformAnalyzer.RtfBuilder;
 using Crc32             = ExImport.Crc32;
@@ -144,8 +144,6 @@ namespace Operations
                 IRPacket[] i_Packets = Decode(i_Channel);
                 ShowRtf(i_Packets);
 
-                Utils.OsziPanel.RecalculateEverything();
-
                 if (i_Packets.Length == 0)
                     return "Error: No remote control packets found.";
                 else
@@ -153,7 +151,7 @@ namespace Operations
             }
             catch (Exception Ex)
             {
-                Utils.OsziPanel.RecalculateEverything();
+                Utils.PanelOszi.RecalculateEverything();
                 return "Error: " + Ex.Message;
             }
         }
@@ -165,7 +163,7 @@ namespace Operations
             Byte[] u8_Digi = i_Channel.mu8_Digital;
 
             // The count of samples after which idle state is detected (no signal)
-            int s32_IdleSamples = (int)((Int64)MAX_SILENCE * 1000000 / OsziPanel.CurCapture.ms64_SampleDist);
+            int s32_IdleSamples = (int)((Int64)MAX_SILENCE * 1000000 / Utils.CurCapture.ms64_SampleDist);
 
             // -----------------------------------------
 
@@ -267,11 +265,11 @@ namespace Operations
             if (s32_AvgCountHi > 0) ms32_AverageHi /= s32_AvgCountHi;
 
             #if PRINT_RAW_SAMPLES
-                Debug.Print(String.Format("Lo: Shortest: {0,4} Spl, Limit: {1,4} Spl, Average over {2,2} short intervals: {3,4} Spl", 
-                                          s32_ShortestLo, ms32_LimitLo, s32_AvgCountLo, ms32_AverageLo));
+                Debug.Print("Lo: Shortest: {0,4} Spl, Limit: {1,4} Spl, Average over {2,2} short intervals: {3,4} Spl", 
+                                          s32_ShortestLo, ms32_LimitLo, s32_AvgCountLo, ms32_AverageLo);
 
-                Debug.Print(String.Format("Hi: Shortest: {0,4} Spl, Limit: {1,4} Spl, Average over {2,2} short intervals: {3,4} Spl", 
-                                          s32_ShortestHi, ms32_LimitHi, s32_AvgCountHi, ms32_AverageHi));
+                Debug.Print("Hi: Shortest: {0,4} Spl, Limit: {1,4} Spl, Average over {2,2} short intervals: {3,4} Spl", 
+                                          s32_ShortestHi, ms32_LimitHi, s32_AvgCountHi, ms32_AverageHi);
             #endif
 
             // Check that average Low and average High do not deviate too much
@@ -347,8 +345,8 @@ namespace Operations
 
                 #if PRINT_RAW_SAMPLES            
                     int s32_Limit = b_High ? ms32_LimitHi : ms32_LimitLo;
-                    Debug.Print(String.Format("{0}: {1,5} Spl {2} --> Factor: {3,5:0.00} --> Len: {4,2} --> Char: '{5}'", b_High ? "Hi" : "Lo",
-                                              s32_Interval, s32_Interval < s32_Limit ? "short" : "     ", d_Factor, s32_BitLen, c_Char));
+                    Debug.Print("{0}: {1,5} Spl {2} --> Factor: {3,5:0.00} --> Len: {4,2} --> Char: '{5}'", b_High ? "Hi" : "Lo",
+                                s32_Interval, s32_Interval < s32_Limit ? "short" : "     ", d_Factor, s32_BitLen, c_Char);
                 #endif    
 
                 mi_MarkRow1.Add(new SmplMark(eMark.Text, s32_Last, i_TogglePoints[i], new String(c_Char, 1)));
@@ -374,13 +372,14 @@ namespace Operations
             RtfDocument i_RtfDoc  = new RtfDocument(Color.White);
             RtfBuilder  i_Builder = i_RtfDoc.CreateNewBuilder();
 
+            i_Builder.TextColor = Color.Cyan;
             i_Builder.AppendText("This universal IR decoder works with any remote control.\n");
             i_Builder.AppendText("It creates a unique CRC for each data packet. Buttons can be stored in RemoteControl.ini\n\n");
-            i_Builder.AppendLine(Color.Magenta, "Decoded " + i_Packets.Length + " packets:\n", FontStyle.Underline);
+            i_Builder.AppendLine(Color.White, "Decoded " + i_Packets.Length + " packets:\n", FontStyle.Underline);
 
             foreach (IRPacket i_Packet in i_Packets)
             {
-                i_Builder.AppendTimestampLine(i_Packet.ms32_StartSample, i_Packet.ms32_EndSample, true);
+                i_Builder.AppendTimestamp(true, i_Packet.ms32_StartSample, i_Packet.ms32_EndSample);
 
                 String s_CRC = i_Packet.mu32_CRC.ToString("X8");
                 String s_Cmd = "RC - Command: " + s_CRC;
@@ -397,7 +396,7 @@ namespace Operations
             int s32_SmplPerBit = (ms32_AverageHi + ms32_AverageLo) / 2;
 
             // Show RTF, if created and switch to tab "Decoder"
-            Utils.FormMain.ShowAnalysisResult(i_RtfDoc, s32_SmplPerBit); 
+            Utils.FormMain.ShowAnalysisResult(i_RtfDoc, s32_SmplPerBit, "USB Decoder Result"); 
         }
     }
 }

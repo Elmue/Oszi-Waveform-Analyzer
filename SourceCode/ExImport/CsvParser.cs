@@ -41,6 +41,7 @@ using System;
 using System.IO;
 using System.Xml;
 using System.Drawing;
+using System.Diagnostics;
 using System.Globalization;
 using System.Collections.Generic;
 
@@ -204,7 +205,8 @@ namespace ExImport
                             i_CsvChan.mi_AnalValues.Add(ParseFloat(s_Value, s32_Line) * i_CsvChan.mf_Factor);
                             break;
                         default:
-                            throw new ArgumentException(); // internal programming error
+                            Debug.Assert(false, "Programming error");
+                            break;
                     }
                 }
 
@@ -247,8 +249,10 @@ namespace ExImport
             Capture i_Capture = new Capture();
             i_Capture.ms_Path         = s_Path;
             i_Capture.ms32_Samples    = s32_Samples;
-            i_Capture.ms32_AnalogRes  = mi_Config.ms32_AnalogRes;
             i_Capture.ms64_SampleDist = (Int64)((decimal)mi_Config.md_TimeIncrement * Utils.PICOS_PER_SECOND);
+            // A 32 bit float variable has a maximum resolution of 23 bits + sign bit. 8 bits are used for the exponent.
+            // The highest resolution that a Capture with float sample can store are 24 bits.
+            i_Capture.ms32_AnalogRes  = Math.Min(24, mi_Config.ms32_AnalogRes);
 
             foreach (CsvChan i_CsvChan in mi_Config.mi_Channels)
             {

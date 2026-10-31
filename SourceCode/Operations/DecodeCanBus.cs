@@ -56,7 +56,7 @@ using eRegKey           = OsziWaveformAnalyzer.Utils.eRegKey;
 using SmplMark          = OsziWaveformAnalyzer.Utils.SmplMark;
 using eMark             = OsziWaveformAnalyzer.Utils.eMark;
 using Utils             = OsziWaveformAnalyzer.Utils;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 using PlatformManager   = Platform.PlatformManager;
 
 namespace Operations
@@ -418,7 +418,6 @@ namespace Operations
 
                 CanPacket[] i_Packets = DecodePackets(i_Channel);
                 ShowRtf(i_Packets);
-                Utils.OsziPanel.RecalculateEverything();
 
                 Utils.EndBusyOperation(null);
 
@@ -439,8 +438,8 @@ namespace Operations
             checkCanFD   .Checked = Utils.RegReadBool  (eRegKey.CanEnableFD,    false);
 
             String s_Params;
-            if (OsziPanel.CurCapture.ms_Path != null && 
-                mi_DemoFiles.TryGetValue(Path.GetFileName(OsziPanel.CurCapture.ms_Path), out s_Params))
+            if (Utils.CurCapture.ms_Path != null && 
+                mi_DemoFiles.TryGetValue(Path.GetFileName(Utils.CurCapture.ms_Path), out s_Params))
             {
                 // Load the settings for the demo files.
                 String[] s_Split = s_Params.Split('=');
@@ -527,7 +526,7 @@ namespace Operations
 
             Utils.RegWriteString(e_RegBaud, i_ComboBaud.Text);
 
-            double d_SamplesPerBit = (double)(Utils.PICOS_PER_SECOND / (OsziPanel.CurCapture.ms64_SampleDist * s32_Baud));
+            double d_SamplesPerBit = (double)(Utils.PICOS_PER_SECOND / (Utils.CurCapture.ms64_SampleDist * s32_Baud));
             if (d_SamplesPerBit < MIN_SAMPLES_BIT)
             {
                 String s_Msg = String.Format("The resolution of the capture is too low for a reliable detection with {0:N0} baud.", s32_Baud);
@@ -1175,7 +1174,7 @@ namespace Operations
             i_Builder.AppendText(Color.White, "\n\nDecoded Packets:\n", FontStyle.Underline);
             foreach (CanPacket i_Pack in i_Packets)
             {
-                i_Builder.AppendTimestampLine(i_Pack.ms32_StartSample, i_Pack.ms32_EndSample, true);
+                i_Builder.AppendTimestamp(true, i_Pack.ms32_StartSample, i_Pack.ms32_EndSample);
 
                 String s_ID = i_Pack.ms32_ID.ToString(i_Pack.Is29Bit ? "X8" : "X3");
                 i_Builder.AppendText(Color.Yellow, s_ID + ": ");
@@ -1210,7 +1209,7 @@ namespace Operations
             }
 
             // Show RTF, if created and switch to tab "Decoder"
-            Utils.FormMain.ShowAnalysisResult(i_RtfDoc, ms32_SmplPerBit); 
+            Utils.FormMain.ShowAnalysisResult(i_RtfDoc, ms32_SmplPerBit, "CAN Bus Decoder Result"); 
         }
     }
 }

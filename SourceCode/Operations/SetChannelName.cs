@@ -48,7 +48,7 @@ using Capture           = OsziWaveformAnalyzer.Utils.Capture;
 using Channel           = OsziWaveformAnalyzer.Utils.Channel;
 using GraphMenuItem     = Operations.OperationManager.GraphMenuItem;
 using Utils             = OsziWaveformAnalyzer.Utils;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 
 namespace Operations
 {
@@ -64,7 +64,7 @@ namespace Operations
             if (i_Channel == null)
                 return; // user did not click on a Channel
 
-            if (b_Analog && Utils.OsziPanel.CommonAnalogDrawing)
+            if (b_Analog && Utils.PanelOszi.CommonAnalogDrawing)
                 return; // Analog channels cannot be distinguished while drawn one on top of the other
 
             GraphMenuItem i_Item = new GraphMenuItem();
@@ -116,8 +116,8 @@ namespace Operations
 
                 mi_Channel.ms_Name = s_NewName;
 
-                OsziPanel.CurCapture.mb_Dirty = true; // user has unsaved changes
-                Utils.OsziPanel.RecalculateEverything();
+                Utils.CurCapture.mb_Dirty = true; // user has unsaved changes
+                Utils.PanelOszi.RecalculateEverything();
             }
             DialogResult = DialogResult.OK;
         }

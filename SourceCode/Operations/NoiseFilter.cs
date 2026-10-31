@@ -45,12 +45,13 @@ using System.Windows.Forms;
 using OperationManager  = Operations.OperationManager;
 using IOperation        = Operations.OperationManager.IOperation;
 using Utils             = OsziWaveformAnalyzer.Utils;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 using Capture           = OsziWaveformAnalyzer.Utils.Capture;
 using Channel           = OsziWaveformAnalyzer.Utils.Channel;
 using GraphMenuItem     = Operations.OperationManager.GraphMenuItem;
 using eRegKey           = OsziWaveformAnalyzer.Utils.eRegKey;
 using PlatformManager   = Platform.PlatformManager;
+using Range             = OsziWaveformAnalyzer.Utils.Range;
 
 namespace Operations
 {
@@ -67,7 +68,7 @@ namespace Operations
             if (i_Channel == null || !b_Analog)
                 return;
 
-            if (b_Analog && Utils.OsziPanel.CommonAnalogDrawing)
+            if (b_Analog && Utils.PanelOszi.CommonAnalogDrawing)
                 return; // Analog channels cannot be distinguished while drawn one on top of the other
 
             GraphMenuItem i_Item = new GraphMenuItem();
@@ -91,7 +92,7 @@ namespace Operations
                 Utils.StartBusyOperation(null);
                 ApplyFilter(Utils.FormMain, false);
                 Utils.EndBusyOperation(null);
-                OsziPanel.CurCapture.mb_Dirty = true; // user has unsaved changes
+                Utils.CurCapture.mb_Dirty = true; // user has unsaved changes
             }
             else 
             {
@@ -100,7 +101,7 @@ namespace Operations
             }
             mi_Channel.mi_SampleMinMax.mb_AnalogOK = false; // must be re-calculated
 
-            Utils.OsziPanel.RecalculateEverything();
+            Utils.PanelOszi.RecalculateEverything();
 
             Utils.RegWriteInteger(eRegKey.NoiseSuppress, trackSuppr .Value);
             Utils.RegWriteInteger(eRegKey.NoiseCycles,   trackCycles.Value);           
@@ -112,7 +113,7 @@ namespace Operations
  	        base.OnLoad(e);
 
             lblChannel.Text = "Channel:  " + mi_Channel;
-            lblChannel.ForeColor = OsziPanel.GetChannelColor(mi_Channel);
+            lblChannel.ForeColor = PanelOszi.GetChannelColor(mi_Channel);
 
             int s32_Supres = Utils.RegReadInteger(eRegKey.NoiseSuppress, 300); // 30 %
             int s32_Cycles = Utils.RegReadInteger(eRegKey.NoiseCycles, 6);
@@ -138,8 +139,8 @@ namespace Operations
             mi_Channel.mi_SampleMinMax.mb_AnalogOK = false; // must be re-calculated
 
             // recalculate only part of the signal that is visible on the screen (speed optimization)
-            Utils.OsziPanel.CalcSampleMinMax(mi_Channel, true);
-            Utils.OsziPanel.Invalidate();
+            Utils.PanelOszi.CalcSampleMinMax(mi_Channel, true);
+            Utils.PanelOszi.Invalidate();
         }
 
         /// <summary>
@@ -149,8 +150,15 @@ namespace Operations
         {
             i_Form.Cursor = Cursors.WaitCursor;
 
-            int s32_Start = b_VisibleOnly ? Utils.OsziPanel.DispStart : 0;
-            int s32_End   = b_VisibleOnly ? Utils.OsziPanel.DispEnd   : OsziPanel.CurCapture.ms32_Samples;
+            Range k_Sel = Utils.PanelOszi.UserSelectionOrAll;
+            if (b_VisibleOnly) 
+            {
+                // If the user has slected a range --> apply the filter only on this range.
+                // If the selected range lies outside the visible screen --> show the preview on the entire visible screen.
+                k_Sel = k_Sel.Intersection(Utils.PanelOszi.DisplayRange);
+                if (!k_Sel.IsValid)
+                     k_Sel = Utils.PanelOszi.DisplayRange;
+            }
 
             // Suppression Trackbar has values from 0 to 950
             float  f_Alpha = (1000.0f - trackSuppr.Value) / 1000.0f;
@@ -159,8 +167,8 @@ namespace Operations
             // Cycles Trackbar has values from 1 to 15
             for (int C=0; C<trackCycles.Value; C++)
             {
-                float f_Output = f_Data[s32_Start];
-                for (int S=s32_Start+1; S<s32_End; S++)
+                float f_Output = f_Data[k_Sel.ms32_Start];
+                for (int S=k_Sel.ms32_Start+1; S<k_Sel.ms32_End; S++)
                 {
                     f_Output += f_Alpha * (f_Data[S] - f_Output);
                     f_Data[S] = f_Output;

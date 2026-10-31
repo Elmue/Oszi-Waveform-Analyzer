@@ -49,7 +49,7 @@ using System.IO;
 using System.Text;
 using System.Windows.Forms;
 
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 using Utils             = OsziWaveformAnalyzer.Utils;
 using OperationManager  = Operations.OperationManager;
 using IOperation        = Operations.OperationManager.IOperation;

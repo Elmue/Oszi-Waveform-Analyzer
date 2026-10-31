@@ -42,25 +42,85 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.VisualBasic" />
+    <Reference Include="NAudio, Version=1.10.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Compiled\NAudio.dll</HintPath>
+    </Reference>
+    <Reference Include="NAudio.Flac, Version=2.0.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Compiled\NAudio.Flac.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Management" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Controls\ComboBoxEx.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Controls\CtrlFFT.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\CtrlFFT.designer.cs">
+      <DependentUpon>CtrlFFT.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\CtrlOszi.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\CtrlOszi.designer.cs">
+      <DependentUpon>CtrlOszi.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\CtrlStartup.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\CtrlStartup.Designer.cs">
+      <DependentUpon>CtrlStartup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\VUMeter.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="ExImport\BigEndianReader.cs" />
     <Compile Include="ExImport\CsvParser.cs" />
     <Compile Include="ExImport\OsziFile.cs" />
+    <Compile Include="ExImport\AudioFile.cs" />
+    <Compile Include="Controls\CtrlXY.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\CtrlXY.designer.cs">
+      <DependentUpon>CtrlXY.cs</DependentUpon>
+    </Compile>
     <Compile Include="Operations\DecodeUSB.cs" />
     <Compile Include="Operations\Digitizer.cs" />
+    <Compile Include="PanelFFT.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="PanelXY.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Platform\PlfMono.cs" />
     <Compile Include="Platform\PlatformManager.cs" />
     <Compile Include="Platform\PlfMicrosoft.cs" />
     <Compile Include="PostDecoder\ISO14230.cs" />
     <Compile Include="PostDecoder\ISO7816.cs" />
     <Compile Include="ExImport\Owon.cs" />
+    <Compile Include="Transfer\FormRecordAudio.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Transfer\FormRecordAudio.designer.cs">
+      <DependentUpon>FormRecordAudio.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Transfer\Hameg.cs" />
+    <Compile Include="Transfer\HamegHM507.cs" />
+    <Compile Include="Transfer\PanelHameg.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Transfer\PanelHameg.designer.cs">
+      <DependentUpon>PanelHameg.cs</DependentUpon>
+    </Compile>
     <Compile Include="Transfer\PanelRigol.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -123,7 +183,6 @@
     </Compile>
     <Compile Include="Operations\OperationManager.cs" />
     <Compile Include="Operations\DecodeMagStripe.cs" />
-    <Compile Include="Operations\InvertChannel.cs" />
     <Compile Include="Operations\DeleteChannel.cs" />
     <Compile Include="Operations\SetChannelName.cs">
       <SubType>Form</SubType>
@@ -138,7 +197,7 @@
     <Compile Include="Operations\SetCursor.designer.cs">
       <DependentUpon>SetCursor.cs</DependentUpon>
     </Compile>
-    <Compile Include="OsziPanel.cs">
+    <Compile Include="PanelOszi.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="ExImport\Crc32.cs" />
@@ -154,11 +213,29 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Transfer\Rigol.cs" />
     <Compile Include="Transfer\SCPI.cs" />
-    <Compile Include="RtfViewer.cs">
+    <Compile Include="PanelRtf.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Transfer\VxiClient.cs" />
     <Compile Include="Utils.cs" />
+    <EmbeddedResource Include="Controls\CtrlFFT.resx">
+      <DependentUpon>CtrlFFT.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Controls\CtrlOszi.resx">
+      <DependentUpon>CtrlOszi.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Controls\CtrlStartup.resx">
+      <DependentUpon>CtrlStartup.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Controls\CtrlXY.resx">
+      <DependentUpon>CtrlXY.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Transfer\FormRecordAudio.resx">
+      <DependentUpon>FormRecordAudio.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Transfer\PanelHameg.resx">
+      <DependentUpon>PanelHameg.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Transfer\PanelRigol.resx">
       <DependentUpon>PanelRigol.cs</DependentUpon>
     </EmbeddedResource>
@@ -208,7 +285,6 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="App.ico" />
-    <EmbeddedResource Include="Resources\ArrowUpDown.ico" />
     <EmbeddedResource Include="Resources\Copy.ico" />
     <EmbeddedResource Include="Resources\Cut.ico" />
     <EmbeddedResource Include="Resources\Paste.ico" />
@@ -219,7 +295,6 @@
     <EmbeddedResource Include="Resources\BankCard.ico" />
     <EmbeddedResource Include="Resources\ConvertAD.ico" />
     <EmbeddedResource Include="Resources\Balloon.ico" />
-    <EmbeddedResource Include="Resources\Cross.ico" />
     <EmbeddedResource Include="Resources\Cursor.ico" />
     <EmbeddedResource Include="Resources\ArrowLeft.ico" />
     <EmbeddedResource Include="Resources\ArrowRight.ico" />
@@ -256,10 +331,51 @@
     <EmbeddedResource Include="Resources\CursorRemove.ico" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Resources\Oszi.png" />
+    <EmbeddedResource Include="Resources\USB.ico" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Resources\USB.ico" />
+    <EmbeddedResource Include="Resources\Abort.png" />
+    <EmbeddedResource Include="Resources\Refresh.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\ArrowMid.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Trash.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Delete.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\SpectrumFFT.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\RepeatOff.ico" />
+    <EmbeddedResource Include="Resources\RepeatOn.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\ComboText.png" />
+    <EmbeddedResource Include="Resources\ComboMusic.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\ComboOSZI.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\ComboBinary.png" />
+    <EmbeddedResource Include="Resources\ComboImage.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\ComboDecoder.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\ComboCapture.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\VUBar.png" />
+    <EmbeddedResource Include="Resources\VUMeter.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Marker.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

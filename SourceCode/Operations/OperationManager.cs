@@ -46,13 +46,14 @@ using System.Windows.Forms;
 
 using RtfDocument       = OsziWaveformAnalyzer.RtfDocument;
 using RtfBuilder        = OsziWaveformAnalyzer.RtfBuilder;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 using Utils             = OsziWaveformAnalyzer.Utils;
 using eMark             = OsziWaveformAnalyzer.Utils.eMark;
 using SmplMark          = OsziWaveformAnalyzer.Utils.SmplMark;
 using Capture           = OsziWaveformAnalyzer.Utils.Capture;
 using Channel           = OsziWaveformAnalyzer.Utils.Channel;
 using eRegKey           = OsziWaveformAnalyzer.Utils.eRegKey;
+using SpectrumFFT       = OsziWaveformAnalyzer.PanelFFT.SpectrumFFT;
 
 namespace Operations
 {
@@ -101,12 +102,12 @@ namespace Operations
         /// <summary>
         /// Create any class that implements IOperation to extecute an operation.
         /// The class may open a Form if required.
-        /// Each class will add one or more entries to the right-click menu in the OsziPanel.
+        /// Each class will add one or more entries to the right-click menu in the PanelOszi.
         /// </summary>
         public interface IOperation
         {
             /// <summary>
-            /// GetMenuItems() returns the items to be displayed in the right-click menu in the OsziPanel.
+            /// GetMenuItems() returns the items to be displayed in the right-click menu in the PanelOszi.
             /// i_Channel is the channel that the user has right-clicked or null if the user did not click on a channel.
             /// See comments in class GraphMenuItem.
             /// </summary>
@@ -143,10 +144,12 @@ namespace Operations
             mi_Operations.Add(typeof(MoveChannel));
             mi_Operations.Add(typeof(DeleteChannel));
             mi_Operations.Add(typeof(CopyPaste));
-            mi_Operations.Add(typeof(InvertChannel));
             mi_Operations.Add(typeof(ConvertAD));
             mi_Operations.Add(typeof(Mathematical));
             mi_Operations.Add(typeof(NoiseFilter));
+
+            // ---------- Analysis Operations ------------
+            mi_Operations.Add(typeof(SpectrumFFT));
 
             // ---------- Decoder Operations ------------
             mi_Operations.Add(typeof(DecodeUART));
@@ -252,11 +255,11 @@ namespace Operations
 
                 k_Mouse.X += 10;
                 k_Mouse.Y += 10;
-                i_Menu.Show(Utils.OsziPanel, k_Mouse, ToolStripDropDownDirection.BelowRight);
+                i_Menu.Show(Utils.PanelOszi, k_Mouse, ToolStripDropDownDirection.BelowRight);
             }
-            catch
+            catch (Exception Ex)
             {
-                Debug.Assert(false, "Programming Error creating right-click menu.");
+                Debug.Assert(false, "Programming Error creating right-click menu.\n" + Ex);
             }
         }
 
@@ -295,9 +298,9 @@ namespace Operations
 
                 // ------------ Sort Marks -----------
 
-                if (OsziPanel.CurCapture != null) // all channels may have been deleted --> Capture == null here
+                if (Utils.CurCapture != null) // all channels may have been deleted --> Capture == null here
                 {
-                    foreach (Channel i_Channel in OsziPanel.CurCapture.mi_Channels)
+                    foreach (Channel i_Channel in Utils.CurCapture.mi_Channels)
                     {
                         if (i_Channel.mi_MarkRows != null)
                         {

@@ -55,6 +55,8 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
+using Progress          = Transfer.FormTransfer.Progress;
+
 namespace Transfer
 {
     /// <summary>
@@ -806,7 +808,7 @@ namespace Transfer
         /// <summary>
         /// Receive data from the device (ASCII responses or Waveform data)
         /// </summary>
-        public Byte[] DeviceRead(int s32_Timeout)
+        public Byte[] DeviceRead(Progress i_Progress, int s32_Timeout)
         {
             #if TRACE_OUTPUT
                 Debug.Print("> DeviceRead()");
@@ -815,7 +817,7 @@ namespace Transfer
             Debug.Assert(mb_LinkCreated, "Programming Error: You must first create a link");
 
             mi_Socket.ReceiveTimeout = s32_Timeout;
-            MemoryStream i_ReceivedData = new MemoryStream();
+            MemoryStream i_Stream = new MemoryStream();
             while (true)
             {
                 cDeviceReadParam i_Param = new cDeviceReadParam(ms32_LinkID);
@@ -833,7 +835,10 @@ namespace Transfer
                 eReadFlags e_Flags = (eReadFlags)Revert(i_Reply.ms32_Reason);
 
                 Byte[] u8_Data = mi_RxStream.ReadData(s32_ByteCount); // writes to Trace
-                i_ReceivedData.Write(u8_Data, 0, u8_Data.Length);
+                i_Stream.Write(u8_Data, 0, u8_Data.Length);
+
+                if (i_Progress != null)
+                    i_Progress.PrintProgress((int)i_Stream.Length);
 
                 #if TRACE_OUTPUT
                     Debug.Print("    Reason= {0}", e_Flags);
@@ -849,9 +854,9 @@ namespace Transfer
             }
 
             #if TRACE_OUTPUT
-                Debug.Print("< DeviceRead() --> total bytes= " + i_ReceivedData.Length);
+                Debug.Print("< DeviceRead() --> total bytes= " + i_Stream.Length);
             #endif
-            return i_ReceivedData.ToArray();
+            return i_Stream.ToArray();
         }
 
         // ====================================================================================================
@@ -887,7 +892,8 @@ namespace Transfer
                 {
                     // In case of Timeout the SocketException must be converted into a TimeoutException. 
                     if (Ex.ErrorCode == WSAETIMEDOUT)
-                        Throw("Timeout. No response from the oscilloscope.\nRead the Help file!", true);
+                        Throw("Timeout. No response from the oscilloscope.\n"
+                           + "Some oscilloscopes do not respond over TCP if the USB cable is also plugged in!", true);
 
                     #if TRACE_OUTPUT
                         Debug.Print("*** " + Ex.Message);

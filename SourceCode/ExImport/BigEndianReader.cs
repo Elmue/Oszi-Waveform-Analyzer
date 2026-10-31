@@ -42,6 +42,9 @@ using System.IO;
 
 namespace ExImport
 {
+    /// <summary>
+    /// required to read CAP files from OWON
+    /// </summary>
     public class BigEndianReader
     {
         public Stream mi_Stream;

@@ -171,10 +171,7 @@ namespace Transfer
         FormTransfer  mi_Form;
         eOsziSerie    me_Serie;
         SCPI          mi_Scpi;
-        bool          mb_Abort;
         OsziModel     mi_OsziModel;
-        int           ms32_LastTick;
-        int           ms32_StartTick;
 
         /// <summary>
         /// returns null if no valid response to *IDN?
@@ -182,14 +179,6 @@ namespace Transfer
         public OsziModel Model
         {
             get { return mi_OsziModel; }
-        }
-
-        /// <summary>
-        /// Abort waveform transfer from the oscilloscope
-        /// </summary>
-        public void AbortTransfer()
-        {
-            mb_Abort = true;
         }
 
         #region Constructor
@@ -326,12 +315,12 @@ namespace Transfer
         // ==============================================================================
 
         // May throw
-        public void Connect(FormTransfer i_Form, SCPI i_Scpi)
+        public void Connect(FormTransfer i_Form)
         {
-            Debug.Assert(mi_Scpi == null, "Programming Error: Do not call Open() multiple times!");
+            Debug.Assert(mi_Scpi == null, "Programming Error: Do not call Connect() multiple times!");
 
             mi_Form = i_Form;
-            mi_Scpi = i_Scpi;
+            mi_Scpi = i_Form.Scpi;
             mi_Scpi.OpcReplaceDelay = mi_FixData.ms32_OpcReplaceDelay;
 
             // Important: Execute the command *IDN? immediatley here.
@@ -523,8 +512,6 @@ namespace Transfer
         /// </summary>
         public Capture TransferAllChannels(bool b_Memory)
         {
-            mb_Abort = false;
-
             // s_Status = TD, WAIT, RUN, AUTO or STOP
             String s_Status = mi_Scpi.SendStringCommand(GetCmd(eCmd.GetTrigStatus));
             if (s_Status != "STOP")
@@ -552,25 +539,21 @@ namespace Transfer
             switch (me_Serie)
             {
                 case eOsziSerie.Rigol_1000DE: 
-                    TransferAnalog_Serie_1000DE(i_Capture, b_Memory, i_Durations);
-                    if (mb_Abort)
-                       return null;
+                    // throws AbortException
+                    TransferAnalog_Serie_1000DE(i_Capture, b_Memory, i_Config.ms32_SamplePoints, i_Durations);
 
                     // TODO: Digital not implemented.
                     break;
 
                 case eOsziSerie.Rigol_1000Z:  
+                    // throws AbortException
                     TransferAnalog_Serie_1000Z(i_Capture, b_Memory, i_Durations);
-                    if (mb_Abort)
-                       return null;
 
+                    // throws AbortException
                     if (b_Memory) TransferDigitalFromMemory_Serie_1000Z(i_Capture, i_Durations);
                     else          TransferDigitalFromScreen_Serie_1000Z(i_Capture, i_Durations);
                     break;
             }
-
-            if (mb_Abort)
-               return null;
 
             if (i_Capture.mi_Channels.Count == 0)
                 throw new Exception("All channels are turned off or there are digital channels that have no data.");
@@ -610,13 +593,14 @@ namespace Transfer
 
         /// <summary>
         /// Rigol is so fucking inconsistent that we must write a different function for eaach oscilloscope serie.
-        /// The commands and the data transfer are totally different.
+        /// The commands and the data transfer are totally different between series 1000Z and 1000DE.
         /// NOTE: It does not make sense to work with double's for voltages because the oscilloscope has only an A/D resolution of 8 bits.
         /// A double uses 8 byte in memory while a float uses 4 bytes.
         /// The screen of the 1000DE serie does not even have 256 pixels vertical resolution. Each raster square displays 
         /// only 25 vertical pixels on the LCD display, so with 8 vertical rasters we get 8 * 25 = 200 pixels.
+        /// Throws AbortException
         /// </summary>
-        private void TransferAnalog_Serie_1000DE(Capture i_Capture, bool b_Memory, List<Int64> i_Durations)
+        private void TransferAnalog_Serie_1000DE(Capture i_Capture, bool b_Memory, int s32_Samples, List<Int64> i_Durations)
         {
             mi_Scpi.SendOpcCommand(GetCmd(eCmd.SetWaveMode, b_Memory ? "RAW" : "NORMAL"));
 
@@ -627,23 +611,22 @@ namespace Transfer
                 if (!mi_Scpi.SendBoolCommand(GetCmd(eCmd.GetAnalDisplay, s32_AnalChan), 250))
                     continue; // Channel is turned off
 
-                // The serie 1000DE does not support a progress display in the status bar showing how many samples have been tranmsitted.
-                String s_Msg = String.Format("Transfer Analog Channel {0}.  Please wait.", s32_AnalChan);
-                mi_Form.PrintStatus(s_Msg, Color.Black);
+                String s_Display = "Analog Channel " + s32_AnalChan;
+                mi_Form.Progr.Init(s_Display, s32_Samples);
 
                 // Allocate enough Receive buffer!
                 // It is extremely important that the buffer is not too small to hold the ENTIRE response from the device!
                 // Documentation says (PDF page 82) that max 1048576 bytes can be read --> 2 MB buffer is enough.
-                Byte[] u8_Data = mi_Scpi.SendByteCommand(eBinaryTCP.Linefeed, 2000000, GetCmd(eCmd.GetWaveData, s32_AnalChan));
+                Byte[] u8_Data = mi_Scpi.SendByteCommand(eBinaryTCP.Linefeed, 2000000, GetCmd(eCmd.GetWaveData, s32_AnalChan), mi_Form.Progr);
 
                 // Rigol is SOO INCREDIBLY STUPID that they send always only 600 samples in the first command even in RAW mode.
                 // So we must send this command twice to get the full memory resolution!
                 // See "Rigol DS1000E Waveform Guide.htm" in subfolder "Documentation"
                 if (b_Memory && u8_Data.Length <= mi_FixData.ms32_HorScreenRes)
-                    u8_Data = mi_Scpi.SendByteCommand(eBinaryTCP.Linefeed, 2000000, GetCmd(eCmd.GetWaveData, s32_AnalChan));
-
-                if (mb_Abort)
-                    return;
+                {
+                    mi_Form.Progr.Init(s_Display, s32_Samples);
+                    u8_Data = mi_Scpi.SendByteCommand(eBinaryTCP.Linefeed, 2000000, GetCmd(eCmd.GetWaveData, s32_AnalChan), mi_Form.Progr);
+                }
 
                 double d_Scale  = mi_Scpi.SendDoubleCommand(GetCmd(eCmd.GetChanScale,  s32_AnalChan));
                 double d_Offset = mi_Scpi.SendDoubleCommand(GetCmd(eCmd.GetChanOffset, s32_AnalChan));
@@ -661,10 +644,11 @@ namespace Transfer
         /// <summary>
         /// Rigol is so fucking inconsistent that we must write different functions for eaach oscilloscope serie.
         /// And as if this was not stupid enough, the digital channels are transferred completely different 
-        /// from screen and memory for the SAME oscilloscope!
+        /// from screen and memory for the SAME oscilloscope model!
         /// NOTE: It does not make sense to work with double's for voltages because the oscilloscope has only an A/D resolution of 8 bits.
         /// A double uses 8 byte in memory while a float uses 4 bytes.
         /// See file "Logfile SCPI Commands DS1074Z.txt" in subfolder "Documentation" showing an analg WAVEFORM transfer.
+        /// Throws AbortException
         /// </summary>
         void TransferAnalog_Serie_1000Z(Capture i_Capture, bool b_Memory, List<Int64> i_Durations)
         {
@@ -680,13 +664,11 @@ namespace Transfer
                 mi_Scpi.SendOpcCommand(GetCmd(eCmd.SetWaveFormat, "BYTE"));
 
                 Preamble i_Prbl = GetPreamble(true);
-                String s_DisplayName = "Analog " + s32_AnalChan;
 
-                Byte[] u8_RawData = ReadRawByteDataStartStop(s_DisplayName, i_Prbl.ms32_SamplePoints);
-                if (mb_Abort)
-                    return;
+                // throws AbortException
+                Byte[] u8_RawData = ReadRawByteDataStartStop("Analog Channel " + s32_AnalChan, i_Prbl.ms32_SamplePoints);
 
-                Channel i_Channel   = new Channel(s_DisplayName);
+                Channel i_Channel   = new Channel("Analog " + s32_AnalChan);
                 i_Channel.mf_Analog = ConvertRawBytesToAnalog_Serie_1000Z(u8_RawData, i_Prbl.ms32_OriginY, i_Prbl.ms32_ReferenceY, i_Prbl.mf_IncrementY);
                 i_Capture.mi_Channels.Add(i_Channel);
 
@@ -701,6 +683,7 @@ namespace Transfer
         /// Rigol is so fucking inconsistent that we must write different functions for eaach oscilloscope serie.
         /// And as if this was not stupid enough, the digital channels are transferred completely different 
         /// from screen and memory by the SAME oscilloscope!
+        /// Throws AbortException
         /// </summary>
         void TransferDigitalFromScreen_Serie_1000Z(Capture i_Capture, List<Int64> i_Durations)
         {
@@ -735,13 +718,11 @@ namespace Transfer
                 mi_Scpi.SendOpcCommand(GetCmd(eCmd.SetWaveSource, "D" + s32_DigiChan));
 
                 Preamble i_Prbl = GetPreamble(true);
-                String s_DisplayName = "Digital " + s32_DigiChan;
 
                 // This is stupid. Only Bit 0 of the raw data is used.
                 // This could be 8 times faster if there would be any intelligence inside Rigol.
-                Byte[] u8_RawData = ReadRawByteDataStartStop(s_DisplayName, i_Prbl.ms32_SamplePoints);
-                if (mb_Abort)
-                    return;
+                // throws AbortException
+                Byte[] u8_RawData = ReadRawByteDataStartStop("Digital Channel " + s32_DigiChan, i_Prbl.ms32_SamplePoints);
 
                 if (IsDigitalChannelEmpty(u8_RawData))
                     continue; // skip empty channels
@@ -761,6 +742,7 @@ namespace Transfer
         /// Rigol is so fucking inconsistent that we must write different functions for eaach oscilloscope serie.
         /// And as if this was not stupid enough, the digital channels are transferred completely different 
         /// from screen and from memory by the SAME oscilloscope!
+        /// Throws AbortException
         /// </summary>
         void TransferDigitalFromMemory_Serie_1000Z(Capture i_Capture, List<Int64> i_Durations)
         {
@@ -790,11 +772,10 @@ namespace Transfer
                 mi_Scpi.SendOpcCommand(GetCmd(eCmd.SetWaveSource, "D" + s32_FirstChannel));
                 
                 Preamble i_Prbl = GetPreamble(true);
-                String s_DisplayName = String.Format("Digital {0} - {1}", s32_FirstChannel, s32_FirstChannel + 7);
+                String s_DisplayName = String.Format("Digital Channels {0} - {1}", s32_FirstChannel, s32_FirstChannel + 7);
 
+                // throws AbortException
                 Byte[] u8_RawData = ReadRawByteDataStartStop(s_DisplayName, i_Prbl.ms32_SamplePoints);
-                if (mb_Abort)
-                    return;
 
                 AppendPodChannels(i_Capture, u8_RawData, s32_FirstChannel);
 
@@ -905,15 +886,16 @@ namespace Transfer
         /// Pass s_DispChan for status display: "Analog 3" or "Digital 12"
         /// s32_Samples must be calculated correctly to match the extact count of samples on the screen or in memory.
         /// s32_BlockSize = 250000 --> request 250 kbyte in one TMC response.
-        /// returns null if user has aborted.
+        /// Throws AbortException if user has aborted.
         /// ------------------------------------
         /// The DS1000Z has 24 MB memory. Set ms32_BlockSize to read 250000 samples at once.
         /// DS1000Z documentation says (PDF page 235) that in BYTE mode max 250 kB can be transferred in BYTE mode.
         /// </summary>
-        Byte[] ReadRawByteDataStartStop(String s_DispChan, int s32_Samples)
+        Byte[] ReadRawByteDataStartStop(String s_DisplayName, int s32_Samples)
         {
             MemoryStream i_RawData = new MemoryStream(s32_Samples);
-            ms32_StartTick = Environment.TickCount;
+
+            mi_Form.Progr.Init(s_DisplayName, s32_Samples);
 
             while (i_RawData.Length < s32_Samples)
             {
@@ -926,13 +908,12 @@ namespace Transfer
                 // Request binary data (BYTE mode) from the oscilloscope memory.
                 // For USB it is extremely important that the buffer is not too small to hold the ENTIRE response from the device!
                 // For TCP add 11 bytes for the Rigol header.
-                Byte[] u8_Data = mi_Scpi.SendByteCommand(eBinaryTCP.MinSize, s32_Remain + 11, GetCmd(eCmd.GetWaveData));
+                Byte[] u8_Data = mi_Scpi.SendByteCommand(eBinaryTCP.MinSize, s32_Remain + 11, GetCmd(eCmd.GetWaveData), null);
 
                 ExtractRigolHeader_Serie_1000Z(u8_Data, i_RawData);
                
-                UpdateStatus(s_DispChan, (int)i_RawData.Length);
-                if (mb_Abort)
-                    return null;
+                // Throws AbortException
+                mi_Form.Progr.PrintProgress((int)i_RawData.Length);
             }
             return i_RawData.ToArray();
         }
@@ -976,29 +957,6 @@ namespace Transfer
             i_RawData.Write(u8_UsbData, s32_FirstByte, s32_ByteCount);
         }
 
-        // ===============================================================================================
-
-        /// <summary>
-        /// Update text in Status ToolStrip 3 times per second.
-        /// IMPORTANT: PrintStatus() calls Application.DoEvents().
-        /// Without calling this frequently the user cannot abort a transfer.
-        /// </summary>
-        void UpdateStatus(String s_DispChan, int s32_Samples)
-        {
-            int s32_Now = Environment.TickCount;
-            if (Math.Abs(s32_Now - ms32_LastTick) > 250)
-            {
-                String s_Msg = String.Format("Transfer Channel {0}, Sample {1:N0}", s_DispChan, s32_Samples);
-
-                int s32_Interval = s32_Now - ms32_StartTick; // time in ms --> speed in kB/s
-                if (s32_Interval > 200)
-                    s_Msg += String.Format(", Speed {0} kB/s",  s32_Samples / s32_Interval);
-
-                mi_Form.PrintStatus(s_Msg, Color.Black);
-                ms32_LastTick = Environment.TickCount;
-            }
-        }
-
         // #############################################################################################
         //                                          DC Capture
         // #############################################################################################
@@ -1006,12 +964,8 @@ namespace Transfer
         /// <summary>
         /// Prepare for slow capture of DC voltages.
         /// </summary>
-        public Capture CreateDcCapture(decimal d_Interval, decimal d_TotTime) // in seconds
+        public Capture StartDcCapture(decimal d_Interval, decimal d_TotTime) // in seconds
         {
-            // The maximum interval that can be stored in a signed 64 bit variable with pico second resolution is 106 days.
-            if (d_TotTime > 100 * 24 * 60 * 60)
-                throw new Exception("Maximum interval (100 days) exceeded");
-
             OsziConfig i_Config = GetOsziConfiguration(false);
             if (i_Config.ms32_SamplePoints == 0)
                 throw new Exception("The oscilloscope is not ready.\nIs there a waveform on the screen?");
@@ -1054,7 +1008,7 @@ namespace Transfer
         /// Set one analog sample per channel in i_DcCapture at index s32_SampleIndex.
         /// This function takes approx 5 ms capturing 2 channels on the DS1074Z over USB.
         /// </summary>
-        public void AddDcSample(Capture i_DcCapture, int s32_SampleIndex)
+        public void CaptureDcSample(Capture i_DcCapture, int s32_SampleIndex)
         {
             // This will never assert if the original code has not been modified.
             Debug.Assert(s32_SampleIndex < i_DcCapture.ms32_Samples, "Internal error: Invalid sample index");
@@ -1104,7 +1058,7 @@ namespace Transfer
 
             // CalcSampleMinMax() must recalculate i_Channel.mi_SampleMinMax when a new pixel appears on the screen
             // e.g. ZoomFactor = "/5" --> every 5 samples.
-            if ((s32_SampleIndex % Utils.OsziPanel.DispSteps) == 0)
+            if ((s32_SampleIndex % Utils.PanelOszi.DispSteps) == 0)
                 i_DcCapture.ResetSampleMinMax();
         }
     }

@@ -48,7 +48,8 @@ using Capture           = OsziWaveformAnalyzer.Utils.Capture;
 using Channel           = OsziWaveformAnalyzer.Utils.Channel;
 using GraphMenuItem     = Operations.OperationManager.GraphMenuItem;
 using Utils             = OsziWaveformAnalyzer.Utils;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
+using Range             = OsziWaveformAnalyzer.Utils.Range;
 
 namespace Operations
 {
@@ -73,7 +74,7 @@ namespace Operations
             i_Copy.mo_Tag       = "CopyOne";
             i_Items.Add(i_Copy);
 
-            if (OsziPanel.CurCapture.mi_Channels.Count > 1)
+            if (Utils.CurCapture.mi_Channels.Count > 1)
             {
                 GraphMenuItem i_All = new GraphMenuItem();
                 i_All.ms_MenuText   = "Edit Signal - Copy all channels";
@@ -103,7 +104,7 @@ namespace Operations
         /// </summary>
         public String Execute(Channel i_Channel, int s32_Sample, bool b_Analog, Object o_Tag)
         {
-            Capture i_Capt = OsziPanel.CurCapture;
+            Capture i_Capt = Utils.CurCapture;
 
             String s_Status = "Error";
             String s_Action = (String)o_Tag;
@@ -112,13 +113,13 @@ namespace Operations
                 case "CopyOne":
                 case "CopyAll":
                 {
-                    int s32_CursorSpl = Utils.OsziPanel.CursorSample;
-                    if (s32_CursorSpl < 0)
-                        throw new Exception("You must set the cursor to the start sample, then right-click on the end sample to copy the range between.");
+                    Range k_Sel = Utils.PanelOszi.UserSelection;
+                    if (!k_Sel.IsValid)
+                        throw new Exception("You must first select the samples to be copied.");
 
-                    int s32_Start = Math.Min(s32_CursorSpl, s32_Sample);
-                    int s32_End   = Math.Max(s32_CursorSpl, s32_Sample);
-                    int s32_Count = s32_End - s32_Start;
+                    int s32_Start = k_Sel.ms32_Start;
+                    int s32_End   = k_Sel.ms32_End;
+                    int s32_Count = k_Sel.Count;
 
                     mi_Copy = new Capture();
                     mi_Copy.ms64_SampleDist = i_Capt.ms64_SampleDist;
@@ -202,8 +203,8 @@ namespace Operations
                         }     
                     }
 
-                    OsziPanel.CurCapture.mb_Dirty = true; // user has unsaved changes
-                    Utils.OsziPanel.RecalculateEverything();
+                    Utils.CurCapture.mb_Dirty = true; // user has unsaved changes
+                    Utils.PanelOszi.RecalculateEverything();
                     break;
                 }
                 case "PasteInsert":
@@ -263,8 +264,8 @@ namespace Operations
                     i_Capt.ms32_Samples += mi_Copy.ms32_Samples;
                     s_Status = mi_Copy.ms32_Samples.ToString("N0") + " samples pasted";
 
-                    OsziPanel.CurCapture.mb_Dirty = true; // user has unsaved changes
-                    Utils.OsziPanel.RecalculateEverything();
+                    Utils.CurCapture.mb_Dirty = true; // user has unsaved changes
+                    Utils.PanelOszi.RecalculateEverything();
                     break;
                 }
             }
@@ -273,14 +274,14 @@ namespace Operations
 
         void CheckChannelsMatch()
         {
-            Capture i_Capt = OsziPanel.CurCapture;
+            Capture i_Capt = Utils.CurCapture;
 
             bool b_Match = i_Capt.mi_Channels.Count == mi_Copy.mi_Channels.Count;
             if (b_Match)
             {
                 for (int C=0; C<i_Capt.mi_Channels.Count; C++)
                 {
-                    Channel i_Dest = i_Capt.mi_Channels[C];
+                    Channel i_Dest = i_Capt .mi_Channels[C];
                     Channel i_Src  = mi_Copy.mi_Channels[C];
 
                     if ((i_Dest.mf_Analog != null) != (i_Src.mf_Analog != null))

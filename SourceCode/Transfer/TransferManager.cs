@@ -37,6 +37,8 @@ NAMING CONVENTIONS which allow to see the type of a variable immediately without
 
 using System;
 using System.IO;
+using System.IO.Ports;
+using System.Drawing;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Text;
@@ -51,6 +53,11 @@ using Channel           = OsziWaveformAnalyzer.Utils.Channel;
 using eRegKey           = OsziWaveformAnalyzer.Utils.eRegKey;
 using Utils             = OsziWaveformAnalyzer.Utils;
 using CsvParser         = ExImport.CsvParser;
+using eConnectMode      = Transfer.SCPI.eConnectMode;
+using ComboBoxEx        = OsziWaveformAnalyzer.ComboBoxEx;
+using ComboItem         = OsziWaveformAnalyzer.ComboBoxEx.ComboItem;
+using eComboImg         = OsziWaveformAnalyzer.ComboBoxEx.eComboImg;
+using ExImportManager   = ExImport.ExImportManager;
 
 namespace Transfer
 {
@@ -65,6 +72,8 @@ namespace Transfer
     /// </summary>
     public class TransferManager
     {
+        #region enums
+
         /// <summary>
         /// The Description of this enum is displayed in the same order in the Combobox
         /// Rigol is such an incredibly **STUPID** company that the SCPI commands are not even consistent
@@ -73,10 +82,19 @@ namespace Transfer
         public enum eOsziSerie
         {
             [Description("Rigol DS1000D / DS1000E Series")] // for example DS1102E
-            Rigol_1000DE, 
+            Rigol_1000DE,
 
             [Description("Rigol DS1000Z / MSO1000Z Series")] // for example DS1074Z
             Rigol_1000Z,  
+
+            [Description("Hameg Compact Series (HMOxxxx)")] // HMO722, HMO1002, HMO1022, HMO1202, HMO1522, HMO2022
+            Hameg_HMO1522,
+
+            [Description("Hameg CombiScope Series (HMxxxx)")] // HM1008, HM1508, HM2005-2, HM2008
+            Hameg_HM2008,
+
+            [Description("Hameg HM507")] // RS232 only, proprietary binary protocol, also HM504 (analog only, no waveforms)
+            Hameg_HM507,
 
             [Description("OWON VDS 1022 and VDS 2052")]
             OWON_1022,  
@@ -85,39 +103,134 @@ namespace Transfer
             Picoscope_3206,
 
             // TODO: Add more oscilloscope brands like Tektronix, Rhode & Schwarz, Siglent, ...
+
+            // MUST be the last entry!
+            [Description("Invalid")]
+            Invalid = 10000,
         }
+
+        /// <summary>
+        /// Every digit in the 16 bit value stores a RS232 property.
+        /// Underscores are replaced with spaces before displaying theses options in the ComboBox.
+        /// </summary>
+        public enum eRs232Settg
+        {
+            _8N1_None = (8 << 12) | (Parity.None << 8) | (StopBits.One << 4) | Handshake.None,
+            _8N2_None = (8 << 12) | (Parity.None << 8) | (StopBits.Two << 4) | Handshake.None,
+            _8N1_RTS  = (8 << 12) | (Parity.None << 8) | (StopBits.One << 4) | Handshake.RequestToSend,
+            _8N2_RTS  = (8 << 12) | (Parity.None << 8) | (StopBits.Two << 4) | Handshake.RequestToSend,
+        }
+
+        #endregion
+
+        #region class OsziFeatures
+
+        public class OsziFeatures
+        {
+            // OR of flags of all supported modes
+            public eConnectMode me_SupportedModes = (eConnectMode)0;
+            
+            // These values are loaded into the ComboBoxes / Text fields in FormTransfer
+            public String ms_Rs232Settg = "?"; // only valid if RS232 supported
+            public String ms_Rs232Baud  = "?"; // only valid if RS232 supported
+            public String ms_TcpPort    = "?"; // only valid if TCP   supported
+            public String ms_VxiLink    = "?"; // only valid if VXI   supported
+
+            public bool IsModeSupported(eConnectMode e_Mode)
+            {
+                if (e_Mode == eConnectMode.Invalid)
+                    return false;
+
+                return (e_Mode & me_SupportedModes) != 0;
+            }
+
+            public String AllModesToString()
+            {
+                StringBuilder i_Builder = new StringBuilder();
+                if (IsModeSupported(eConnectMode.USB))   i_Builder.AppendLine("TMC over USB");
+                if (IsModeSupported(eConnectMode.VXI))   i_Builder.AppendLine("VXI over TCP / UDP");
+                if (IsModeSupported(eConnectMode.TCP))   i_Builder.AppendLine("SCPI over TCP");
+                if (IsModeSupported(eConnectMode.RS232)) i_Builder.AppendLine("RS232 or Virtual COM");
+                return i_Builder.ToString().Trim();
+            }
+
+            public eConnectMode GetFirstValidMode()
+            {
+                foreach (eConnectMode e_Mode in Enum.GetValues(typeof(eConnectMode)))
+                {
+                    if (IsModeSupported(e_Mode))
+                        return e_Mode;
+                }
+                Debug.Assert(false, "No connect mode supported"); // This should never happen
+                return eConnectMode.Invalid;
+            }
+        }
+
+        #endregion
+
+        #region interface ITransferPanel
 
         /// <summary>
         /// Used for all UserControl's that are displayed in Form Transfer
         /// </summary>
         public interface ITransferPanel
         {
+            // Get the default settings for the selected oszi model
+            OsziFeatures OsziFeatures { get; }
+
             // This is called when the Form is opened
             // Must not throw
             void OnLoad(eOsziSerie e_OsziSerie);
 
             // Open the connection to the oscilloscope, update GUI
             // Throws on error
-            void OnOpenDevice(SCPI i_Scpi);
+            void OpenDevice();
 
             // Close the connection to the oscilloscope, update GUI
             // Must not throw
-            void OnCloseDevice();
+            void CloseDevice();
 
             // Sends a command that the user has typed and displays the response in i_TextReponse.
             // Must not throw, but display error in i_TextReponse
             void SendManualCommand(String s_Command, TextBox i_TextReponse);
+
+            // ---------- DC Capture ------------
+
+            // The user has clicked the "DC Capture" button in FormTransfer.
+            // d_Interval and d_TotTime are the values that the user has entered in FormTransfer.
+            Capture StartDcCapture(decimal d_Interval, decimal d_TotTime);
+
+            // The timer is due --> add a new sample to the capture.
+            // i_DcCapture is the Capture that was returned from OnStartDcCapture()
+            // s32_CaptureIdx is the sample index in i_DcCapture where to store the new analog value.
+            void CaptureDcSample(Capture i_DcCapture, int s32_CaptureIdx);
         }
 
-        public static void FillComboOsziModel(ComboBox i_ComboOsziModel)
+        #endregion
+
+        public static void FillComboOsziModel(ComboBoxEx i_ComboOsziModel)
         {
             i_ComboOsziModel.Sorted = false; // IMPORTANT!
+            i_ComboOsziModel.BeginUpdate();
             i_ComboOsziModel.Items.Clear();
             foreach (eOsziSerie e_Serie in Enum.GetValues(typeof(eOsziSerie)))
             {
+                if (e_Serie == eOsziSerie.Invalid)
+                    continue;
+
+                eComboImg e_Image = eComboImg.Capture; // Transfer is implemented
+                switch (e_Serie)
+                {
+                    case eOsziSerie.OWON_1022:
+                    case eOsziSerie.Picoscope_3206:
+                        e_Image = eComboImg.Text; // Only file import is implemented
+                        break;
+                }
+
                 String s_Descript = Utils.GetDescriptionAttribute(e_Serie);
-                i_ComboOsziModel.Items.Add(s_Descript);
+                i_ComboOsziModel.Items.Add(new ComboItem(s_Descript, e_Image));
             }
+            i_ComboOsziModel.EndUpdate();
             Utils.ComboAdjustDropDownWidth(i_ComboOsziModel);
 
             i_ComboOsziModel.Text = Utils.RegReadString(eRegKey.OsziSerie);
@@ -148,6 +261,12 @@ namespace Transfer
                 case eOsziSerie.Picoscope_3206:
                     throw new Exception("For Picoscope 3206 the SCPI transfer is not yet implemented.\nBut you can import a CSV file.");
 
+                case eOsziSerie.Hameg_HMO1522:
+                case eOsziSerie.Hameg_HM2008:
+                case eOsziSerie.Hameg_HM507:
+                    i_Panel = new PanelHameg();
+                    break;
+
                 // TODO: Add Tektronix, Rhode & Schwarz, Siglent, ...
 
                 default:
@@ -157,6 +276,23 @@ namespace Transfer
 
             Form i_Form = new FormTransfer(e_OsziSerie, i_Panel);
             i_Form.ShowDialog(Utils.FormMain);
+        }
+
+        public static bool IsInputFile(String s_Extension, ref eComboImg e_Image)
+        {
+            switch (s_Extension)
+            {
+                case ".csv":
+                    e_Image = eComboImg.Text;
+                    return true;
+                case ".cap":
+                case ".bin":
+                case ".wfm":
+                    e_Image = eComboImg.Binary;
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         /// <summary>
@@ -170,6 +306,12 @@ namespace Transfer
             String     s_FileExt   = Path.GetExtension(s_Path).ToLower();
             eOsziSerie e_OsziSerie = (eOsziSerie)i_ComboOsziModel.SelectedIndex;
 
+            if (s_FileExt == ".wfm")
+            {
+                ExImportManager.ShowWfmErrorBox();
+                return null;
+            }
+
             if (s_FileExt == ".csv")
             {
                 CsvParser i_Parser = new CsvParser();
@@ -182,12 +324,22 @@ namespace Transfer
                 case eOsziSerie.Rigol_1000DE:
                 case eOsziSerie.Rigol_1000Z:
                 case eOsziSerie.Picoscope_3206:
-                    throw new Exception("For " + i_ComboOsziModel.Text + " only CSV file import is implemented.\nDid you select the correct Oszi Model?");
+                    throw new Exception("Import of *" + s_FileExt + " file:\n"
+                                      + "For " + i_ComboOsziModel.Text + " only CSV file import is implemented.\n"
+                                      + "Did you select the correct Oszi Model?");
 
                 case eOsziSerie.OWON_1022:
                     if (s_FileExt == ".cap") return ExImport.OWON.ParseBinaryFile(s_Path, ref b_Abort);
                     if (s_FileExt == ".bin") return ExImport.OWON.ParseBinaryFile(s_Path, ref b_Abort);
-                    throw new Exception("For " + i_ComboOsziModel.Text + " only CSV, BIN and CAP file import is implemented.\nDid you select the correct Oszi Model?");
+                    throw new Exception("Import of *" + s_FileExt + " file:\n"
+                                      + "For " + i_ComboOsziModel.Text + " only CSV, BIN and CAP file import is implemented.\n"
+                                      + "Did you select the correct Oszi Model?");
+
+                case eOsziSerie.Hameg_HMO1522:
+                case eOsziSerie.Hameg_HM2008:
+                case eOsziSerie.Hameg_HM507:
+                    throw new Exception("For " + i_ComboOsziModel.Text + " file import is not implemented.\n"
+                                      + "Use 'Transfer' to load the waveforms over RS232, USB or TCP.");
 
                 // TODO: Add Tektronix, Rhode & Schwarz, Siglent, ... which probably use their own proprietary CSV format
 

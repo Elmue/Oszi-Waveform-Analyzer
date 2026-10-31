@@ -49,37 +49,65 @@ using delInvokeBool     = OsziWaveformAnalyzer.Utils.delInvokeBool;
 using eRegKey           = OsziWaveformAnalyzer.Utils.eRegKey;
 using Capture           = OsziWaveformAnalyzer.Utils.Capture;
 using Channel           = OsziWaveformAnalyzer.Utils.Channel;
-using ComboPath         = OsziWaveformAnalyzer.Utils.ComboPath;
-using DispFactor        = OsziWaveformAnalyzer.OsziPanel.DispFactor;
+using ComboPath         = OsziWaveformAnalyzer.ComboBoxEx.ComboPath;
+using DispFactor        = OsziWaveformAnalyzer.PanelOszi.DispFactor;
 using ExImportManager   = ExImport.ExImportManager;
 using eSaveAs           = ExImport.ExImportManager.eSaveAs;
 using OperationManager  = Operations.OperationManager;
 using TransferManager   = Transfer.TransferManager;
 using PlatformManager   = Platform.PlatformManager;
+using AudioFile         = ExImport.AudioFile;
+using IAudioInDevice    = Platform.PlatformManager.IAudioInDevice;
+using FormRecordAudio   = Transfer.FormRecordAudio;
 
 namespace OsziWaveformAnalyzer
 {
     public partial class FormMain : Form
     {
-        // Used when starting for the first time (no registry entries exist yet)
-        const int DEFAULT_ANAL_SEPARATE_HEIGHT = 150; // pixel
-        const int DEFAULT_ANAL_COMMON_HEIGHT   = 300; // pixel
-        const int DEFAULT_DIGITAL_HEIGHT       =  35; // pixel
+        #region enums
+
+        public enum eTab
+        {
+            Invalid = -1,
+            Oszi = 0,
+            XYPlot,
+            FFT,
+            Decoder,
+        }
+
+        #endregion
+
+        #region IPanelAction
+
+        public interface IPanelAction
+        {
+            // called when the user has switched to another tab
+            // called with null when the old capture has been deleted 
+            // called with valid Capture when a new capture has been loaded
+            void OnUserAction(eTab e_ActiveTab, Capture i_Capture);
+        }
+
+        #endregion
 
         bool             mb_Abort;
         bool             mb_InitDone;
         ExImportManager  mi_ExImport;
+        ComboPath        mi_CurInputFile;
         Timer            mi_StatusTimer  = new Timer();
         Timer            mi_CmdLineTimer = new Timer();
-        CheckBox[]       mi_CheckBoxes   = new CheckBox[0];
-        ComboPath        mi_CurInputFile;
+        CtrlStartup      mi_CtrlStartup;
+        CtrlOszi         mi_CtrlOszi;
+        CtrlXY           mi_CtrlXY;
+        CtrlFFT          mi_CtrlFFT;
+        IPanelAction[]   mi_PanelActions;
+        String           ms_DecoderLabel;
+        ComboBoxEx       mi_ComboFactor;
+        Label            mi_LblFactorHint;
+        Label            mi_LblDispSamples;
 
         public FormMain()
         {
             InitializeComponent();
-
-            // This array must contain the checkboxes in the order from left to right
-            mi_CheckBoxes = new CheckBox[] { checkSepChannels, checkLegend };
 
             pictureLogo.Image    = Utils.LoadResourceImage("Logo.png");
             pictureLogo.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -90,37 +118,34 @@ namespace OsziWaveformAnalyzer
             try
             {
                 base.OnLoad(e);
+                Utils.Init(this, panelOszi, panelXY, panelFFT);
 
-                Utils.Init(this, osziPanel);
+                CheckBox i_CheckSepChannels;
+                mi_CtrlStartup  = new CtrlStartup();
+                mi_CtrlOszi     = new CtrlOszi(toolTip, out i_CheckSepChannels, out mi_ComboFactor, out mi_LblFactorHint, out mi_LblDispSamples);
+                mi_CtrlXY       = new CtrlXY  (toolTip, scrollBarXY);
+                mi_CtrlFFT      = new CtrlFFT (toolTip);
+
+                mi_PanelActions = new IPanelAction[] { panelOszi, panelXY, panelFFT, panelRtf, 
+                                                       mi_CtrlStartup, mi_CtrlOszi, mi_CtrlXY, mi_CtrlFFT };
+
+                mi_ComboFactor.SelectedIndexChanged += new EventHandler(comboFactor_SelectedIndexChanged);
+
+                // ------------------------------
+
+                panelXY  .Init(scrollBarXY);
+                panelFFT .Init();
+                panelOszi.Init(mi_LblDispSamples, i_CheckSepChannels, mi_ComboFactor);
+                panelOszi.KeyDown += new KeyEventHandler(OnOsziPanelKeyDown);
+
+                // ------------------------------
 
                 mi_ExImport = new ExImportManager (textFileName, comboOsziModel);
 
-                osziPanel.Init(lblInfo, lblDispSamples, checkSepChannels);
-                osziPanel.KeyDown += new KeyEventHandler(OnOsziPanelKeyDown);
-
-                statusLabel   .Text = "";
-                lblDispSamples.Text = "";
-                lblInfo       .Text = "No samples loaded";
-
-                checkLegend     .Checked = Utils.RegReadBool(eRegKey.ShowLegend,      true);
-                checkSepChannels.Checked = Utils.RegReadBool(eRegKey.SeparateChannel, true);
-
-                eRegKey e_KeyAnalog = checkSepChannels.Checked ? eRegKey.AnalogHeightSeparate : eRegKey.AnalogHeightCommon;
-                int     s32_Default = checkSepChannels.Checked ? DEFAULT_ANAL_SEPARATE_HEIGHT : DEFAULT_ANAL_COMMON_HEIGHT;
-                trackAnalogHeight.Minimum  = OsziPanel.MIN_ANALOG_HEIGHT;
-                trackAnalogHeight.Maximum  = OsziPanel.MAX_ANALOG_HEIGHT;
-                trackAnalogHeight.Value    = Utils.RegReadInteger(e_KeyAnalog, s32_Default);
-                trackAnalogHeight.Visible  = false;
-
-                trackDigitalHeight.Minimum = OsziPanel.MIN_DIGITAL_HEIGHT;
-                trackDigitalHeight.Maximum = OsziPanel.MAX_DIGITAL_HEIGHT;
-                trackDigitalHeight.Value   = Utils.RegReadInteger(eRegKey.DigitalHeight, DEFAULT_DIGITAL_HEIGHT);
-                trackDigitalHeight.Visible = false;
-
-                lblAnalogHeight .Text      = "";
-                lblDigitalHeight.Text      = "You can right-click into the graph";
-                lblDigitalHeight.ForeColor = Color.PeachPuff;
-
+                statusLabel      .Text = "";
+                mi_LblDispSamples.Text = "";
+                SetLabel("No samples loaded");
+                
                 mi_StatusTimer.Tick += new EventHandler(OnStatusTimer);
                 mi_StatusTimer.Interval = 7000;
 
@@ -133,6 +158,8 @@ namespace OsziWaveformAnalyzer
                 // Any future ex/imports have to be added to the class ExImportManager
                 ExImportManager.FillComboSaveAs(comboSaveAs);
 
+                SetButtonTooltips();
+
                 Utils.LoadWndPosFromRegistry(this, eRegKey.MainWindow);
 
                 String s_Title = "Oszi Waveform Analyzer — Capture, Display, A/D, Logicanalyzer " + Utils.APP_VERSION + " by ElmüSoft";
@@ -140,6 +167,8 @@ namespace OsziWaveformAnalyzer
                     s_Title += "  [DEBUG VERSION]";
                 #endif
                 this.Text = s_Title;
+
+                AdjustTabPanels();
 
                 btnRefresh_Click(null, null);
                 mb_InitDone = true;
@@ -182,7 +211,7 @@ namespace OsziWaveformAnalyzer
             // This is called from the PipeServerThread --> invoke into GUI thread
             return (bool)Invoke((delInvokeBool)delegate() 
             {
-                if (OsziPanel.CurCapture != null && OsziPanel.CurCapture.mb_Dirty)
+                if (Utils.CurCapture != null && Utils.CurCapture.mb_Dirty)
                 {
                     DialogResult e_Result = MessageBox.Show(this, "You have unsaved changes.\n"
                                           + "Click OK to lose the changes and load the file\n" 
@@ -193,7 +222,7 @@ namespace OsziWaveformAnalyzer
                     if (e_Result == DialogResult.Cancel)
                         return false;
 
-                    OsziPanel.CurCapture.mb_Dirty = false;
+                    Utils.CurCapture.mb_Dirty = false;
                     UpdateDirty();
                 }
                 OpenCommandlineFile(s_OsziPath);
@@ -206,13 +235,9 @@ namespace OsziWaveformAnalyzer
         /// </summary>
         void OpenCommandlineFile(String s_OsziPath)
         {
-            // Change the working directory with the capture files to the directory that the user has clicked.
-            Utils.SampleDir = Path.GetDirectoryName(s_OsziPath);
+            SetUserDirectory(Path.GetDirectoryName(s_OsziPath));
 
-            // reload combobox with the files from the new directory
-            mi_ExImport.LoadComboInput(comboInput);
-
-            // If the user double clicked a file in subfolder "Samples" it is already in the ComboBox --> select it.
+            // Select the user file in the ComboBox
             foreach (ComboPath i_Exist in comboInput.Items)
             {
                 if (String.Compare(i_Exist.ms_Path, s_OsziPath, true) == 0)
@@ -236,6 +261,12 @@ namespace OsziWaveformAnalyzer
                 MessageBox.Show(this, "An operation is still in progress.\nAbort the operation to close the window.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
+
+            if (HasUnsavedChanges(true))
+            {
+                e.Cancel = true;
+                return;
+            }
         }
 
         protected override void OnMove(EventArgs e)
@@ -250,99 +281,82 @@ namespace OsziWaveformAnalyzer
         {
             base.OnSizeChanged(e);
 
-            if (mb_InitDone && WindowState == FormWindowState.Normal)
-                Utils.RegWriteRectangle(eRegKey.MainWindow, Bounds);
+            if (mb_InitDone)
+            {
+                if (WindowState == FormWindowState.Normal)
+                    Utils.RegWriteRectangle(eRegKey.MainWindow, Bounds);
+
+                AdjustTabPanels();
+            }
 
             statusLabel.Width = ClientSize.Width - 20;
-            osziPanel.RecalculateEverything();
+        }
 
-            AdjustLabelInfo();
+        void OnTabControl_SelectedIndexChanged(object sender, System.EventArgs e)
+        {
+            if (mb_InitDone)
+                AdjustTabPanels();
         }
 
         /// <summary>
-        /// Adjust the with of lblInfo
+        /// Called from OnInit(), on Tabe change, on resize and after loading a new capture
         /// </summary>
-        void AdjustLabelInfo()
+        void AdjustTabPanels()
         {
-            int s32_Width = ClientSize.Width;
-            foreach (CheckBox i_Box in mi_CheckBoxes)
+            eTab e_Tab = (eTab)tabControl.SelectedIndex;
+            switch (e_Tab)
             {
-                if (i_Box.Visible)
-                {
-                    s32_Width = i_Box.Left; // left-most visible checkbox
+                case eTab.Oszi:
+                    panelOszi.RecalculateEverything();
+                    panelOszi.Visible = (Utils.CurCapture != null);
                     break;
-                }
+
+                case eTab.XYPlot:
+                    int X  = (tabXY.Width - tabXY.Height) / 2;
+                    int s32_Size    = tabXY.Height - scrollBarXY.Height;
+                    panelXY.Bounds  = new Rectangle(X, 0, s32_Size, s32_Size);
+                    panelXY.Visible = (Utils.CurCapture != null);
+                    break;
+
+                case eTab.FFT:
+                    panelFFT.Bounds  = new Rectangle(0, 0, tabFFT.Width, tabFFT.Height);
+                    panelFFT.Visible = (Utils.CurCapture != null);
+                    break;
+
+                case eTab.Decoder:
+                    if (ms_DecoderLabel != null) SetLabel(ms_DecoderLabel);
+                    else                         SetLabel("No decoder result");
+                    panelRtf.Visible = (Utils.CurCapture != null);
+                    break;
             }
-            lblInfo.Width = s32_Width - lblInfo.Left - 5;
+
+            lblInfo.Width = ClientSize.Width - lblInfo.Left - 5;
+
+            if (Utils.CurCapture == null) 
+            {
+                SetLabel("No samples loaded");
+
+                pictureOszi.Parent   = tabControl.SelectedTab;
+                pictureOszi.Location = new Point((tabControl.SelectedTab.Width  - pictureOszi.Width)  / 2,
+                                                 (tabControl.SelectedTab.Height - pictureOszi.Height) / 2);
+                pictureOszi.Visible = true;
+            }
+            else pictureOszi.Visible = false;
+
+            foreach (Control i_Panel in mi_PanelActions)
+            {
+                if (i_Panel.Parent == null) // a MainCtrl Panel is shown for the first time
+                {
+                    i_Panel.Location = new Point(groupSave.Right + 6, groupSave.Top);
+                    Controls.Add(i_Panel);
+                }
+                ((IPanelAction)i_Panel).OnUserAction(e_Tab, Utils.CurCapture);
+            }
         }
 
         private void linkSave_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             PlatformManager.Instance.ShowHelp(this, "SaveOptions");
-        }
-
-        private void linkUpdate_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-        {
-            PlatformManager.Instance.ShowURL(this, "https://netcult.ch/elmue/Oszi-Waveform-Analyzer");
-        }
-
-        // --------------------------------------------------
-
-        private void trackAnalogHeight_Scroll(object sender, EventArgs e)
-        {
-            eRegKey e_KeyAnalog = checkSepChannels.Checked ? eRegKey.AnalogHeightSeparate : eRegKey.AnalogHeightCommon;
-            Utils.RegWriteInteger(e_KeyAnalog, trackAnalogHeight.Value);
-            UpdateTrackbars();
-            osziPanel.RecalculateEverything();
-            osziPanel.Focus();
-        }
-
-        private void trackDigital_Scroll(object sender, EventArgs e)
-        {
-            Utils.RegWriteInteger(eRegKey.DigitalHeight, trackDigitalHeight.Value);
-            UpdateTrackbars();
-            osziPanel.RecalculateEverything();
-            osziPanel.Focus();
-        }
-
-        private void UpdateTrackbars()
-        {
-            trackAnalogHeight .Visible = true;
-            trackDigitalHeight.Visible = true;
-
-            osziPanel.AnalogHeight  = trackAnalogHeight.Value;
-            osziPanel.DigitalHeight = trackDigitalHeight.Value;
-            
-            lblAnalogHeight .Text = "Analog Height: "   + trackAnalogHeight.Value  + " pixel";
-            lblDigitalHeight.Text = "Digital  Height: " + trackDigitalHeight.Value + " pixel";
-            lblDigitalHeight.ForeColor = Color.White;
-            linkUpdate.Visible = false;
-        }
-
-        // --------------------------------------------------
-
-        private void checkSepChannels_CheckedChanged(object sender, EventArgs e)
-        {
-            if (mb_InitDone)
-            {
-                Utils.RegWriteBool(eRegKey.SeparateChannel, checkSepChannels.Checked);
-
-                eRegKey e_KeyAnalog = checkSepChannels.Checked ? eRegKey.AnalogHeightSeparate : eRegKey.AnalogHeightCommon;
-                int     s32_Default = checkSepChannels.Checked ? DEFAULT_ANAL_SEPARATE_HEIGHT : DEFAULT_ANAL_COMMON_HEIGHT;
-                trackAnalogHeight.Value = Utils.RegReadInteger(e_KeyAnalog, s32_Default);
-                trackAnalogHeight_Scroll(null, null);
-            }
-
-            osziPanel.RecalculateEverything(); // does nothing if no Capture loaded
-        }
-
-        private void checkLegend_CheckedChanged(object sender, EventArgs e)
-        {
-            if (mb_InitDone)
-                Utils.RegWriteBool(eRegKey.ShowLegend, checkLegend.Checked);
-
-            osziPanel.ShowLegend = checkLegend.Checked;
-            osziPanel.RecalculateEverything(); // does nothing if no Capture loaded
         }
 
         // -----------------------------------------------------
@@ -353,74 +367,77 @@ namespace OsziWaveformAnalyzer
             {
                 // Arrow Left + Arrow Right are handled in OsziPanel
                 case Keys.Up:
-                    comboFactor.SelectedIndex = Math.Max(comboFactor.SelectedIndex - 1, 0);
+                    mi_ComboFactor.SelectedIndex = Math.Max(mi_ComboFactor.SelectedIndex - 1, 0);
                     break;
                 case Keys.Down:
-                    comboFactor.SelectedIndex = Math.Min(comboFactor.SelectedIndex + 1, comboFactor.Items.Count - 1);
+                    mi_ComboFactor.SelectedIndex = Math.Min(mi_ComboFactor.SelectedIndex + 1, mi_ComboFactor.Items.Count - 1);
                     break;
             }
         }
 
         private void comboFactor_SelectedIndexChanged(object sender, EventArgs e)
         {
-            DispFactor i_Factor = (DispFactor)comboFactor.SelectedItem;
+            DispFactor i_Factor = (DispFactor)mi_ComboFactor.SelectedItem;
             if (i_Factor == null)
                 return;
 
-            osziPanel.DispSteps = i_Factor.ms32_DispSteps;
-            osziPanel.Zoom      = i_Factor.ms32_Zoom;
+            panelOszi.DispSteps = i_Factor.ms32_DispSteps;
+            panelOszi.Zoom      = i_Factor.ms32_Zoom;
 
-            if (osziPanel.DispSteps == 1) // 1:1 or zoom mode
-                checkSaveFactor.Checked = false;
+            if (panelOszi.DispSteps == 1) // 1:1 or zoom mode
+                checkApplyFactor.Checked = false;
 
-            mi_ExImport.ms32_SaveSteps = checkSaveFactor.Checked ? i_Factor.ms32_DispSteps : 1;
-            tabControl.SelectedTab = tabOszi;
-            osziPanel.RecalculateEverything(true);
-            osziPanel.Focus();
+            panelOszi.RecalculateEverything(true);
+
+            // if the user has set a cursor make sure it is visible after zooming in
+            if (Utils.PanelOszi.CursorSample > 0)
+                Utils.PanelOszi.JumpToSample(Utils.PanelOszi.CursorSample);
+
+            panelOszi.Focus();
         }
 
         private void checkSaveFactor_CheckedChanged(object sender, EventArgs e)
         {
-            if (checkSaveFactor.Checked && osziPanel.Zoom > 1 && 
-                (mi_ExImport.me_SaveAs == eSaveAs.OsziFilePlain || 
-                 mi_ExImport.me_SaveAs == eSaveAs.OsziFileZip))
+            eSaveAs e_SaveAs = (eSaveAs)comboSaveAs.SelectedIndex;
+            if (checkApplyFactor.Checked && panelOszi.Zoom > 1 && 
+                (e_SaveAs == eSaveAs.OsziFilePlain || 
+                 e_SaveAs == eSaveAs.OsziFileZip))
             {
                 MessageBox.Show(Utils.FormMain, "The zoom factor is only used for display.\n"
                                               + "It cannot be applied when saving an OSZI file.\n"
                                               + "You can only select a shrink factor to reduce file size.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                checkSaveFactor.Checked = false;
+                checkApplyFactor.Checked = false;
                 return;
             }
 
-            if (checkSaveFactor.Checked)
+            if (checkApplyFactor.Checked)
             {
-                lblFactorHint.Text = "Used for display\nand save to OSZI file";
-                lblFactorHint.ForeColor = Color.Yellow;
+                mi_LblFactorHint.Text = "Used for display\nand save to OSZI file";
+                mi_LblFactorHint.ForeColor = Color.Yellow;
             }
             else
             {
-                lblFactorHint.Text = "Press ALT + F\nand arrow up/down";
-                lblFactorHint.ForeColor = Color.PeachPuff;
+                mi_LblFactorHint.Text = "Use Arrow up/down\n to change Factor";
+                mi_LblFactorHint.ForeColor = Color.PeachPuff;
             }
-
-            mi_ExImport.ms32_SaveSteps = checkSaveFactor.Checked ? osziPanel.DispSteps : 1;
         }
 
         private void comboSaveAs_SelectedIndexChanged(object sender, EventArgs e)
         {
-            mi_ExImport.me_SaveAs = (eSaveAs)comboSaveAs.SelectedIndex;
-            switch (mi_ExImport.me_SaveAs)
+            switch ((eSaveAs)comboSaveAs.SelectedIndex)
             {
                 case eSaveAs.Screenshot:
                 case eSaveAs.FullImage:
                 case eSaveAs.RtfFile:
-                    checkSaveFactor.Visible = false;
+                    checkApplyFactor.Visible = false;
+                    checkShrink8Bit .Visible = false;
                     break;
                 default:
-                    if (osziPanel.Zoom > 1)
-                        checkSaveFactor.Checked = false;
+                    if (panelOszi.Zoom > 1)
+                        checkApplyFactor.Checked = false;
 
-                    checkSaveFactor.Visible = true;
+                    checkApplyFactor.Visible = true;
+                    checkShrink8Bit .Visible = true;
                     break;
             }
         }
@@ -428,11 +445,11 @@ namespace OsziWaveformAnalyzer
         // -----------------------------------------------------
 
         /// <summary>
-        /// Reload the combobox with CSV and SOCI file
+        /// Reload the combobox with CSV and OSCI files
         /// </summary>
         private void btnRefresh_Click(object sender, EventArgs e)
         {
-            if (btnRefresh.Text == "Abort")
+            if ((String)btnRefresh.Tag == "Abort")
             {
                 mb_Abort = true; // Abort file loading
                 return;
@@ -441,7 +458,7 @@ namespace OsziWaveformAnalyzer
             if (!Utils.StartBusyOperation(this))
                 return;
 
-            mi_ExImport.LoadComboInput(comboInput);
+            mi_ExImport.FillComboInput(comboInput);
 
             Utils.EndBusyOperation(this);
         }
@@ -455,18 +472,20 @@ namespace OsziWaveformAnalyzer
             textFileName.Text = "";
         }
 
-        public bool HasUnsavedChanges()
+        public bool HasUnsavedChanges(bool b_Closing = false)
         {
-            if (OsziPanel.CurCapture != null && OsziPanel.CurCapture.mb_Dirty)
+            if (Utils.CurCapture != null && Utils.CurCapture.mb_Dirty)
             {
+                String s_NextAction = b_Closing ? "and close the program?" : "and load another capture?";
+
                 DialogResult e_Result = MessageBox.Show(this, "You have unsaved changes.\n"
-                                        + "Do you want to lose them and load another capture?", 
+                                        + "Do you want to lose them and " + s_NextAction, 
                                           "Oszi Waveform Analyer", MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation);
 
                 if (e_Result == DialogResult.No)
                     return true;
 
-                OsziPanel.CurCapture.mb_Dirty = false;
+                Utils.CurCapture.mb_Dirty = false;
                 UpdateDirty();
             }
             return false;
@@ -508,7 +527,7 @@ namespace OsziWaveformAnalyzer
             }
 
             ImportFile(mi_CurInputFile.ms_Path);
-            osziPanel.Focus();
+            panelOszi.Focus();
         }
 
         /// <summary>
@@ -520,10 +539,10 @@ namespace OsziWaveformAnalyzer
                 return;
 
             mb_Abort = false;
-            comboFactor.Items.Clear();
+            mi_ComboFactor.Items.Clear();
+            btnFolder .Enabled = false;
             comboInput.Enabled = false;
-            btnRefresh.Text = "Abort";
-            lblInfo   .Text = "";
+            SetButtonTooltips(); // show Abort image
             Application.DoEvents();
 
             try
@@ -540,13 +559,52 @@ namespace OsziWaveformAnalyzer
             }
 
             Utils.EndBusyOperation(this);
-            btnRefresh.Text = "Refresh";
 
+            btnFolder .Enabled = true;
             comboInput.Enabled = true;
-            if (OsziPanel.CurCapture == null)
+            SetButtonTooltips(); // Show Refresh image
+
+            if (Utils.CurCapture == null)
             {
                 comboInput.SelectedIndex = -1;
                 PrintStatus("Aborted", Color.Red);
+            }
+        }
+
+        /// <summary>
+        /// Set tooltips for buttons Refresh, Folder and Save
+        /// Set Image for button Refresh
+        /// </summary>
+        void SetButtonTooltips()
+        {
+            if (Utils.UserDir.Length == 0)
+                toolTip.SetToolTip(btnFolder, "Select a second directory where to load files from.\n"
+                                            + "Currently no second directory is selected.");
+            else
+                toolTip.SetToolTip(btnFolder, "Select a second directory where to load files from.\n"
+                                            + "The current second directory is:\n" + Utils.UserDir);
+
+            toolTip.SetToolTip(btnSave, "Save the file into the directory\n" + Utils.SampleDir);
+
+            // The combobox is disabled in ImportFile() while loading --> show abort icon
+            if (comboInput.Enabled)
+            {
+                btnRefresh.Tag   = "Refresh";
+                btnRefresh.Image = Utils.LoadResourceImage("Refresh.png");
+
+                if (Utils.UserDir.Length == 0)
+                    toolTip.SetToolTip(btnRefresh, "Refresh the list 'Input File' reading the directory\n" + Utils.SampleDir
+                                                 + "\nYou can select a second directory with the 'Folder' button");
+                else
+                    toolTip.SetToolTip(btnRefresh, "Refresh the list 'Input File' reading the directories\n" + Utils.SampleDir
+                                                 + "\nand\n" + Utils.UserDir
+                                                 + "\nYou can change the second directory with the 'Folder' button");
+            }
+            else
+            {
+                btnRefresh.Tag   = "Abort";
+                btnRefresh.Image = Utils.LoadResourceImage("Abort.png");
+                toolTip.SetToolTip(btnRefresh, "Abort loading");
             }
         }
 
@@ -564,24 +622,34 @@ namespace OsziWaveformAnalyzer
                 return;
             }
 
-            rtfViewer.Clear();
-            tabControl.SelectedTab = tabOszi;
+            ms_DecoderLabel = null; // No decoder result
 
-            // Only store the Capture, do not yet display it.
-            // First osziPanel.ms32_DispSteps must be set
-            osziPanel.StoreCapture(i_Capture); 
+            // Clear the current capture in all panels
+            foreach (IPanelAction i_Panel in mi_PanelActions)
+            {
+                // free memory of previous capture, clear tab content
+                // Below AdjustTabPanels() is cxalled which will inform all panels about the new Capture
+                i_Panel.OnUserAction((eTab)tabControl.SelectedIndex, null);
+            }
 
+            // The tabs Decoder and FFT are empty now --> switch to show the new capture
+            if (tabControl.SelectedIndex != (int)eTab.Oszi && 
+                tabControl.SelectedIndex != (int)eTab.XYPlot)
+                tabControl.SelectedTab = tabOszi;
+
+            Utils.CurCapture = i_Capture;
+    
             if (i_Capture != null) 
             {
-                comboFactor.BeginUpdate();
-                comboFactor.Items.Clear();
+                mi_ComboFactor.BeginUpdate();
+                mi_ComboFactor.Items.Clear();
 
                 // Add fix zoom factors
-                comboFactor.Items.Add(new DispFactor(true, 20));
-                comboFactor.Items.Add(new DispFactor(true, 10));
-                comboFactor.Items.Add(new DispFactor(true,  5));
-                comboFactor.Items.Add(new DispFactor(true,  2));
-                comboFactor.Items.Add(new DispFactor(true,  1));
+                mi_ComboFactor.Items.Add(new DispFactor(true, 20));
+                mi_ComboFactor.Items.Add(new DispFactor(true, 10));
+                mi_ComboFactor.Items.Add(new DispFactor(true,  5));
+                mi_ComboFactor.Items.Add(new DispFactor(true,  2));
+                mi_ComboFactor.Items.Add(new DispFactor(true,  1));
 
                 // Add dynamic shrink factors
                 int[] s32_Steps = new int[] { 2, 5, 10 };                
@@ -591,7 +659,7 @@ namespace OsziWaveformAnalyzer
                     foreach (int s32_Step in s32_Steps)
                     {                   
                         int s32_Factor = s32_Step * s32_Multiply;
-                        comboFactor.Items.Add(new DispFactor(false, s32_Factor));
+                        mi_ComboFactor.Items.Add(new DispFactor(false, s32_Factor));
 
                         // The minimum display size is 1000 pixel
                         if (i_Capture.ms32_Samples < s32_Factor * 1000)
@@ -601,30 +669,29 @@ namespace OsziWaveformAnalyzer
                         }
                     }
                 }
-                comboFactor.EndUpdate();
-                Utils.ComboAdjustDropDownWidth(comboFactor);
+                mi_ComboFactor.EndUpdate();
+                Utils.ComboAdjustDropDownWidth(mi_ComboFactor);
 
                 // Select a low resolution, so the entire waveform is visible after loading a new capture.
-                // The next line will set osziPanel.ms32_DispSteps in the event handler.
-                comboFactor.SelectedIndex = Math.Max(0, comboFactor.Items.Count - 2);
+                // The next line will set panelOszi.ms32_DispSteps in the event handler.
+                mi_ComboFactor.SelectedIndex = Math.Max(0, mi_ComboFactor.Items.Count - 2);
 
                 if (i_Capture.ms_Path == null) // Capture does not come from a file --> remove file name
                 {
                     comboInput.SelectedIndex = -1;
                     i_Capture.mb_Dirty = true;
                 }
-
-                // Make trackbars visible after the first loaded samples
-                UpdateTrackbars();
             }
             
-            osziPanel.RecalculateEverything();
+            panelOszi.RecalculateEverything();
             UpdateDirty();
 
-            // This must be after RecalculateEverything() has calculated ms32_AnalogCount
-            checkSepChannels.Visible = i_Capture != null && i_Capture.ms32_AnalogCount > 1;
+            // avoid displaying a black panel if the new file does not support X/Y plot
+            if (tabControl.SelectedIndex == (int)eTab.XYPlot && i_Capture != null && i_Capture.ms32_AnalogCount != 2)
+                tabControl.SelectedTab = tabOszi;
 
-            AdjustLabelInfo();
+            // Call this after RecalculateEverything() has calculated ms32_AnalogCount
+            AdjustTabPanels();
 
             if (i_Capture != null)
             {
@@ -634,67 +701,41 @@ namespace OsziWaveformAnalyzer
             }
         }
 
-        public void ShowAnalysisResult(RtfDocument i_Result, int s32_SamplesPerBit)
+        /// <summary>
+        /// s32_SamplesPerBit == 0 --> do not change display factor
+        /// </summary>
+        public void ShowAnalysisResult(RtfDocument i_Result, int s32_SamplesPerBit, String s_Decoder)
         {
-            AdjustDisplayFactor(s32_SamplesPerBit);
+            panelOszi.SetDisplayFactorForBit(s32_SamplesPerBit);
 
             if (i_Result == null || i_Result.IsEmpty)
             {
-                rtfViewer.Clear();
-                tabControl.SelectedTab = tabOszi;
-                return;
+                panelRtf.Clear();
+                // This must be called also in case if nothing was detected to show any added digital channels.
+                panelOszi.RecalculateEverything();
+                ms_DecoderLabel = null; // No decoder result
             }
-
-            rtfViewer.Rtf = i_Result.BuildRTF();
-            tabControl.SelectedTab = tabDecoder;
-        }
-
-        /// <summary>
-        /// s32_SamplesPerBit:
-        /// In case of self sync data (CAN bus, UART, IR, MagStripe) this corresponds to one bit.
-        /// In case of synchronous data (SPI, I2C) this corresponds to a clock period.
-        /// Tries to auto-select a Display Factor, so that one digital bit corresponds to approx 25 pixels on the screen.
-        /// </summary>
-        public void AdjustDisplayFactor(int s32_SamplesPerBit)
-        {
-            if (s32_SamplesPerBit == 0)
-                return;
-
-            double d_Steps    = s32_SamplesPerBit / 25.0;
-            double d_MinDiff  = double.MaxValue;
-            DispFactor i_Best = null;
-
-            foreach (DispFactor i_Factor in comboFactor.Items)
+            else
             {
-                if (i_Factor.ms32_Zoom > 1)
-                    continue;
-
-                double d_Diff = Math.Abs(i_Factor.ms32_DispSteps - d_Steps);
-                if (d_Diff < d_MinDiff)
-                {
-                    d_MinDiff = d_Diff;
-                    i_Best = i_Factor;
-                }
+                panelRtf.Rtf = i_Result.BuildRTF();
+                tabControl.SelectedTab = tabDecoder;
+                ms_DecoderLabel = s_Decoder;
+                SetLabel(s_Decoder);
             }
-
-            if (i_Best != null)
-                comboFactor.SelectedItem = i_Best;
         }
 
         public String SaveRichText(String s_Path)
         {
-            String s_RTF = rtfViewer.Rtf;
-            if (String.IsNullOrEmpty(s_RTF))
+            if (ms_DecoderLabel == null)
             {
-                MessageBox.Show(this, "Nothing to be saved.\nThere is no decoder result.", "Error", 
-                                MessageBoxButtons.OK, MessageBoxIcon.Error);
-                tabControl.SelectedTab = tabDecoder;
+                MessageBox.Show(this, "No decoder result to be saved.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                tabControl.SelectedTab = tabDecoder; // show the empty tab to the user
                 return null;
             }
 
             try
             {
-                File.WriteAllText(s_Path, s_RTF, Utils.ENCODING_ANSI); // NOT UTF8 !!!
+                File.WriteAllText(s_Path, panelRtf.Rtf, Utils.ENCODING_ANSI); // NOT UTF8 !!!
                 return "decoder result";
             }
             catch (Exception Ex)
@@ -704,33 +745,77 @@ namespace OsziWaveformAnalyzer
             }
         }
 
-        public void SwitchToTab(int s32_Index)
+        public void SwitchToTab(eTab e_Tab)
         {
-            tabControl.SelectedIndex = s32_Index;
+            tabControl.SelectedIndex = (int)e_Tab;
         }
 
         // -----------------------------------------------------
+
+        private void btnFolder_Click(object sender, EventArgs e)
+        {
+            FolderBrowserDialog i_Dlg = new FolderBrowserDialog();
+            i_Dlg.SelectedPath = Utils.UserDir;
+            i_Dlg.Description  = "Select the second directory where to load additional Input Files.\n"
+                               + "Click 'Cancel' to turn off the second directory.";
+            i_Dlg.ShowNewFolderButton = false;
+            
+            if (i_Dlg.ShowDialog(this) != DialogResult.OK)
+            {
+                SetUserDirectory("");
+                return;
+            }
+            SetUserDirectory(i_Dlg.SelectedPath);
+        }
+
+        /// <summary>
+        /// The user has manually selected a new second folder or double clicked an Oszi file in any folder.
+        /// </summary>
+        private void SetUserDirectory(String s_Path)
+        {
+            // If the user has double clicked an OSZI file in the sample direcory -> do not add this as a new second directory
+            String s_UserDir = s_Path.TrimEnd('\\');
+            if (s_Path.Length == 0 || String.Compare(s_UserDir, Utils.SampleDir, true) == 0)
+                s_UserDir = "";
+
+            Utils.RegWriteString(eRegKey.UserDirectory, s_UserDir);
+
+            // Change the second directory to the new user directory.
+            Utils.UserDir = s_UserDir;
+
+            // Reload combobox with the new files
+            btnRefresh_Click(null, null);
+
+            // Add the new user directory to the tooltip
+            SetButtonTooltips();
+        }
 
         private void btnSave_Click(object sender, EventArgs e)
         {
             if (!Utils.CheckMinSamples())
                 return;
 
+            eSaveAs e_SaveAs = (eSaveAs)comboSaveAs.SelectedIndex;
+            eTab    e_Tab    = (eTab)   tabControl .SelectedIndex;
+
             // Asks if existing file may be overwritten
-            String s_Path = mi_ExImport.GetSavePath();
+            String s_Path = mi_ExImport.GetSavePath(e_SaveAs, e_Tab);
             if (s_Path == null)
                 return;
 
             if (!Utils.StartBusyOperation(this))
                 return;
+
+            int s32_SaveSteps = checkApplyFactor.Checked ? panelOszi.DispSteps : 1;
             try
             {
-                mi_ExImport.Export(s_Path);
+                mi_ExImport.Export(s_Path, e_SaveAs, e_Tab, s32_SaveSteps, checkShrink8Bit.Checked);
 
                 // Always turn this checkbox off, so the user has to set it manually each time again.
                 // This avoids that the user saves an OSZI file in low resolution without wanting it explicitely.
                 // The default save mode is always to save the higehst resolution that is possible.
-                checkSaveFactor.Checked = false;
+                checkApplyFactor.Checked = false;
+                checkShrink8Bit .Checked = false;
             }
             catch (Exception Ex)
             {
@@ -763,6 +848,22 @@ namespace OsziWaveformAnalyzer
             }
         }
 
+        private void btnRecordAudio_Click(object sender, EventArgs e)
+        {
+            FormRecordAudio i_Form = new FormRecordAudio();
+            i_Form.ShowDialog(this);
+        }
+
+        // -----------------------------------------------------
+
+        /// <summary>
+        /// Set text of Label above the tab control
+        /// </summary>
+        public void SetLabel(String s_Text)
+        {
+            lblInfo.Text = s_Text;
+        }
+
         // -----------------------------------------------------
 
         /// <summary>
@@ -770,9 +871,12 @@ namespace OsziWaveformAnalyzer
         /// </summary>
         public void UpdateDirty()
         {
-            tabOszi.Text = (OsziPanel.CurCapture != null && OsziPanel.CurCapture.mb_Dirty) ? "Oszi *" : "Oszi";
+            tabOszi.Text = (Utils.CurCapture != null && Utils.CurCapture.mb_Dirty) ? "Oszi *" : "Oszi";
         }
 
+        /// <summary>
+        /// Print to status bar
+        /// </summary>
         public void PrintStatus(String s_Text, Color c_Color)
         {
             statusLabel.Text      = s_Text;

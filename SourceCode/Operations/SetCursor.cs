@@ -46,13 +46,14 @@ using System.Windows.Forms;
 
 using OperationManager  = Operations.OperationManager;
 using Utils             = OsziWaveformAnalyzer.Utils;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 using IOperation        = Operations.OperationManager.IOperation;
 using Capture           = OsziWaveformAnalyzer.Utils.Capture;
 using Channel           = OsziWaveformAnalyzer.Utils.Channel;
 using GraphMenuItem     = Operations.OperationManager.GraphMenuItem;
 using eRegKey           = OsziWaveformAnalyzer.Utils.eRegKey;
 using PlatformManager   = Platform.PlatformManager;
+using Range             = OsziWaveformAnalyzer.Utils.Range;
 
 namespace Operations
 {
@@ -65,14 +66,14 @@ namespace Operations
         /// </summary>
         public void GetMenuItems(Channel i_Channel, bool b_Analog, List<GraphMenuItem> i_Items)
         {
-            if (Utils.OsziPanel.CursorSample >= 0) // only if cursor exists
+            if (Utils.PanelOszi.CursorSample >= 0 || Utils.PanelOszi.UserSelection.IsValid)
             {
                 GraphMenuItem i_Remove = new GraphMenuItem();
-                i_Remove.ms_MenuText  = "Remove the cursor";
+                i_Remove.ms_MenuText  = "Remove cursor and selection";
                 i_Remove.ms_ImageFile = "CursorRemove.ico";
                 i_Remove.mo_Tag       = "Remove";
 
-                if (Utils.OsziPanel.RasterON)
+                if (Utils.PanelOszi.RasterON)
                     i_Remove.ms_MenuText  = "Remove the cursor and the raster";
 
                 i_Items.Add(i_Remove);
@@ -101,12 +102,13 @@ namespace Operations
             switch ((String)o_Tag)
             {
                 case "Cursor":
-                    Utils.OsziPanel.SetCursor(s32_Sample, -1m);
-                    Utils.OsziPanel.Invalidate();
+                    Utils.PanelOszi.SetCursor(s32_Sample, -1m);
+                    Utils.PanelOszi.Invalidate();
                     break;
                 case "Remove":
-                    Utils.OsziPanel.SetCursor(-1, -1m);
-                    Utils.OsziPanel.Invalidate();
+                    Utils.PanelOszi.SetCursor(-1, -1m);
+                    Utils.PanelOszi.UserSelection = new Range(0, 0);
+                    Utils.PanelOszi.Invalidate();
                     break;
                 case "Raster":
                     InitializeComponent();
@@ -161,7 +163,7 @@ namespace Operations
                 default: Debug.Assert(false, "Programming Error: Invalid unit"); break;
             }
 
-            decimal d_MinDistance = OsziPanel.CurCapture.ms64_SampleDist * 10;
+            decimal d_MinDistance = Utils.CurCapture.ms64_SampleDist * 10;
             if (d_Interval < d_MinDistance)
             {
                 String s_Mesg = String.Format("The resolution of the current capture is insufficient.\n"
@@ -174,8 +176,8 @@ namespace Operations
             Utils.RegWriteString(eRegKey.RasterUnit,     comboUnit.Text);
             Utils.RegWriteString(eRegKey.RasterInterval, textInterval.Text);
 
-            Utils.OsziPanel.SetCursor(ms32_Sample, d_Interval);
-            Utils.OsziPanel.Invalidate();
+            Utils.PanelOszi.SetCursor(ms32_Sample, d_Interval);
+            Utils.PanelOszi.Invalidate();
 
             DialogResult = DialogResult.OK;
         }

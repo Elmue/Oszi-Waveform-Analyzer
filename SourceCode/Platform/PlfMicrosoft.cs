@@ -40,6 +40,7 @@ using System.IO;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Text;
+using System.Drawing;
 using System.ComponentModel;
 using System.Reflection;
 using System.Management;
@@ -48,14 +49,21 @@ using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using Microsoft.Win32;
+using NAudio.Wave;
+using NAudio.CoreAudioApi;
 
 using IPlatform         = Platform.PlatformManager.IPlatform;
-using IDevice           = Platform.PlatformManager.IDevice;
+using IUsbDevice        = Platform.PlatformManager.IUsbDevice;
 using eRuntime          = Platform.PlatformManager.eRuntime;
 using Utils             = OsziWaveformAnalyzer.Utils;
-using RtfViewer         = OsziWaveformAnalyzer.RtfViewer;
+using PanelRtf          = OsziWaveformAnalyzer.PanelRtf;
 using eRegKey           = OsziWaveformAnalyzer.Utils.eRegKey;
 using ScpiCombo         = Transfer.SCPI.ScpiCombo;
+using AudioDataCallback = Platform.PlatformManager.AudioDataCallback;
+using IAudioInDevice    = Platform.PlatformManager.IAudioInDevice;
+using WaveInEventArgs   = NAudio.Wave.WaveInEventArgs;
+using MmException       = NAudio.MmException;
+using MmResult          = NAudio.MmResult;
 
 namespace Platform
 {
@@ -113,7 +121,9 @@ namespace Platform
 
         #region Structures and constants for UsbWin
 
-        const String           USB_TMC_CLASS_GUID   = "{A9FDBB24-128A-11D5-9961-00108335E361}"; // "USB Test and Measurement Devices"
+        const String           GUID_USB_TMC_CLASS   = "{A9FDBB24-128A-11D5-9961-00108335E361}"; // "USB Test and Measurement Devices"
+        const String           GUID_PORTS           = "{4D36E978-E325-11CE-BFC1-08002BE10318}"; // Ports (PCI + USB)
+        const  String          HKLM_CURCTRL_ENUM    = "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Enum\\";
         static readonly IntPtr INVALID_HANDLE_VALUE = (IntPtr)(-1);
         const int              ERROR_FILE_NOT_FOUND =   2;
         const int              ERROR_GEN_FAILURE    =  31; // A device attached to the system is not functioning.
@@ -310,7 +320,7 @@ namespace Platform
         /// When the user has clicked a link in the RTF document a message WM_NOTIFY is sent to the parent control.
         /// It it is sent back to the control itself as a reflected message.
         /// </summary>
-        public void RtfBoxWndProc(RtfViewer i_RtfViewer, ref Message k_Msg)
+        public void RtfBoxWndProc(PanelRtf i_PanelRtf, ref Message k_Msg)
         {
             if (k_Msg.Msg == WM_REFLECT + WM_NOTIFY) 
             {
@@ -319,15 +329,15 @@ namespace Platform
                 {
                     ENLINK k_Link = (ENLINK)k_Msg.GetLParam(typeof(ENLINK));
                     if (k_Link.msg == WM_LBUTTONDOWN) // the user has clicked the link
-                        OnLinkMouseDown(i_RtfViewer, k_Link.charRange);
+                        OnLinkMouseDown(i_PanelRtf, k_Link.charRange);
                 }
             }
         }
 
         /// <summary>
-        /// WM_LBUTTONDOWN click on a RTF link --> call RtfViewer.OnTimestampClicked()
+        /// WM_LBUTTONDOWN click on a RTF link --> call PanelRtf.OnTimestampClicked()
         /// </summary>
-        void OnLinkMouseDown(RtfViewer i_RtfViewer, CHARRANGE k_CharRange)
+        void OnLinkMouseDown(PanelRtf i_PanelRtf, CHARRANGE k_CharRange)
         {
             int s32_CharCount = k_CharRange.cpMax - k_CharRange.cpMin;
 
@@ -335,7 +345,7 @@ namespace Platform
             // It will never be more than 20 characters long.
             if (k_CharRange.cpMin < 1 || s32_CharCount < 1 || s32_CharCount > 1000)
             {
-                Debug.Assert(false, "RtfViewer: Invalid URL character range from EN_LINK event.");
+                Debug.Assert(false, "PanelRtf: Invalid URL character range from EN_LINK event.");
                 return;
             }
 
@@ -345,15 +355,15 @@ namespace Platform
 
             // EM_GETTEXTRANGE extracts the invisible URL "341735,362014" from the Text that the control stores internally:
             // HYPERLINK "341735,362014"13.669 ms
-            int s32_RetCount = (int)PlfMicrosoft.SendMessage(i_RtfViewer.Handle, EM_GETTEXTRANGE, IntPtr.Zero, k_TxtRange);
+            int s32_RetCount = (int)PlfMicrosoft.SendMessage(i_PanelRtf.Handle, EM_GETTEXTRANGE, IntPtr.Zero, k_TxtRange);
             if (s32_RetCount == s32_CharCount)
             {
                 String s_LinkUrl = Marshal.PtrToStringUni(k_TxtRange.lpstrText);
-                i_RtfViewer.OnTimestampClicked(s_LinkUrl);
+                i_PanelRtf.OnTimestampClicked(s_LinkUrl);
             }
             else
             {
-                Debug.Assert(false, "RtfViewer: Invalid URL character count from EM_GETTEXTRANGE");
+                Debug.Assert(false, "PanelRtf: Invalid URL character count from EM_GETTEXTRANGE");
             }
             Marshal.FreeHGlobal(k_TxtRange.lpstrText);
         }
@@ -366,7 +376,7 @@ namespace Platform
         /// SCPI USB transfer implementation for Windows.
         /// This class communicates with the USB TMC driver Ausbtmc.sys from the IVI Foundation.
         /// </summary>
-        public class UsbWin : IDevice
+        public class UsbWin : IUsbDevice
         {
             IntPtr           mh_Device;
             NativeOverlapped mk_Overlap = new NativeOverlapped();
@@ -494,6 +504,118 @@ namespace Platform
                         throw new Win32Exception(Marshal.GetLastWin32Error());
                 }
                 return s32_BytesRead;
+            }
+        }
+
+        #endregion
+
+        #region class WinAudioInDevice
+
+        class WinAudioInDevice : IAudioInDevice
+        {
+            int               ms32_Index;
+            int               ms32_Bits;
+            int               ms32_Channels;
+            String            ms_DeviceName;
+            WaveInEvent       mi_WaveIn;
+            AudioDataCallback mf_Callback;
+
+            public WinAudioInDevice(int s32_Index, String s_DeviceName)
+            {
+                ms32_Index    = s32_Index;
+                ms_DeviceName = s_DeviceName;
+            }
+
+            // displayed in ComboBox
+            public override String ToString()
+            {
+                return ms_DeviceName;
+            }
+
+            public void StartRecording(int s32_Samplerate, int s32_Channels, int s32_Bits, AudioDataCallback f_Callback)
+            {
+                // It would be wrong to call StopRecording() here.
+                // The callback would receive crippled data from diferent recordings.
+                if (mi_WaveIn != null)
+                    throw new Exception("Audio device is still recording.");
+
+                if (s32_Bits != 8 && s32_Bits != 16 && s32_Bits != 24)
+                    throw new ArgumentException("Invalid bit count.");
+
+                ms32_Channels = s32_Channels;
+                ms32_Bits     = s32_Bits;
+                mf_Callback   = f_Callback;
+                mi_WaveIn     = new WaveInEvent();
+                try
+                {
+                    mi_WaveIn.DeviceNumber       = ms32_Index;
+                    mi_WaveIn.BufferMilliseconds = 100; // OnCaptureData() is called every 100 ms
+                    mi_WaveIn.WaveFormat         = new WaveFormat(s32_Samplerate, s32_Bits, s32_Channels);
+                    mi_WaveIn.DataAvailable     += new EventHandler<WaveInEventArgs>(OnCaptureData);
+                    mi_WaveIn.StartRecording();
+                }
+                catch (Exception Ex)
+                {
+                    mi_WaveIn.Dispose();
+                    mi_WaveIn = null;
+
+                    MmException i_MmEx = Ex as MmException;
+                    if (i_MmEx != null && (i_MmEx.Result == MmResult.WaveBadFormat ||
+                                           i_MmEx.Result == MmResult.InvalidParameter))
+                        throw new ArgumentException(String.Format("Samplerate: {0}, Channels: {1}, Bits: {2} is not supported.", 
+                                                    s32_Samplerate, s32_Channels, ms32_Bits));
+                    throw Ex; 
+                }
+            }
+
+            public void Dispose()
+            {
+                StopRecording();
+            }
+            public void StopRecording()
+            {
+                if (mi_WaveIn != null)
+                {
+                    mi_WaveIn.StopRecording();
+                    mi_WaveIn.Dispose();
+                    mi_WaveIn = null;
+                }
+            }
+
+            /// <summary>
+            /// Called every 100 ms from a Windows Multimedia API thread.
+            /// ATTENTION: This event may even be fired after calling StopRecording()
+            /// </summary>
+            void OnCaptureData(Object sender, WaveInEventArgs e)
+            {
+                try
+                {
+                    int s32_SampleCount = e.BytesRecorded / (ms32_Bits / 8) / ms32_Channels;
+
+                    float[][] f_Data = new float[ms32_Channels][];
+                    for (int C=0; C<ms32_Channels; C++)
+                    {
+                        f_Data[C] = new float[s32_SampleCount];
+                    }
+
+                    // Stereo: Data in e.Buffer comes as Left, Right, Left, Right,....
+                    // Mono:   Data in e.Buffer comes as Mono, Mono,  Mono, Mono,....
+                    // Convert into float range between -1.0 to +1.0
+                    int s32_BufIdx = 0;
+                    for (int S=0; S<s32_SampleCount; S++)
+                    {
+                        for (int C=0; C<ms32_Channels; C++)
+                        {
+                            f_Data[C][S] = Utils.SampleBytesToFloat(ms32_Bits, e.Buffer, ref s32_BufIdx);
+                        }
+                    }
+
+                    mf_Callback(f_Data);
+                }
+                catch (Exception Ex)
+                {
+                    Debug.Assert(false, "Exception in AudioInDevice.OnCaptureData():\n" + Ex);
+                }
             }
         }
 
@@ -685,14 +807,14 @@ namespace Platform
                 foreach (ManagementObject i_Inst in i_Entity.GetInstances())
                 {
                     Object o_ClassGUID = i_Inst.GetPropertyValue("ClassGuid");
-                    if (o_ClassGUID == null || o_ClassGUID.ToString().ToUpper() != USB_TMC_CLASS_GUID)
+                    if (Utils.SafeToString(o_ClassGUID).ToUpper() != GUID_USB_TMC_CLASS)
                         continue;
                    
                     // s_DeviceID = USB\VID_1AB1&PID_04CE\DS1ZC204807063
-                    String s_DeviceID = i_Inst.GetPropertyValue("PnpDeviceID").ToString();
+                    String s_DeviceID = Utils.SafeToString(i_Inst.GetPropertyValue("PnpDeviceID"));
 
                     // Same link as in HKLM\SYSTEM\CurrentControlSet\Control\DeviceClasses\{a9fdbb24-128a-11d5-9961-00108335e361}
-                    String s_SymbolicLink = @"\\?\" + s_DeviceID.Replace('\\', '#') + '#' + USB_TMC_CLASS_GUID;
+                    String s_SymbolicLink = @"\\?\" + s_DeviceID.Replace('\\', '#') + '#' + GUID_USB_TMC_CLASS;
 
                     String[] s_Parts = s_DeviceID.Split('\\');
                     String  s_Serial = s_Parts[s_Parts.Length -1].ToUpper(); // DS1ZC204807063
@@ -708,12 +830,105 @@ namespace Platform
         }
 
         /// <summary>
+        /// Load the combobox with all COM ports
+        /// </summary>
+        public void EnumerateRs232Ports(ComboBox i_ComboRS232)
+        {
+            i_ComboRS232.Items.Clear();
+
+            List<String> i_Ports = new List<String>();
+            using (ManagementClass i_Entity = new ManagementClass("Win32_PnPEntity"))
+            {
+                foreach (ManagementObject i_Inst in i_Entity.GetInstances())
+                {
+                    Object o_ClassGUID = i_Inst.GetPropertyValue("ClassGuid");
+                    if (Utils.SafeToString(o_ClassGUID).ToUpper() != GUID_PORTS)
+                        continue;
+
+                    // Not interesting
+                    // String s_Manufact = Utils.SafeToString(i_Inst.GetPropertyValue("Manufacturer")); // Driver vendor
+                    // String s_Descr    = Utils.SafeToString(i_Inst.GetPropertyValue("Description"));  // "USB Serial Port"
+                   
+                    // s_DeviceID = USB\VID_1AB1&PID_04CE\DS1ZC204807063
+                    String s_DeviceID = Utils.SafeToString(i_Inst.GetPropertyValue("PnpDeviceID"));
+
+                    // The COM ports must be read from the registry otherwise some COM ports may appear without a port name
+                    String s_RegPath  = HKLM_CURCTRL_ENUM + s_DeviceID + "\\Device Parameters";
+                    String s_PortName = Utils.SafeToString(Registry.GetValue(s_RegPath, "PortName", ""));
+                    i_Ports.Add(s_PortName);
+                }
+            }
+
+            String[] s_Ports = i_Ports.ToArray();
+            Array.Sort(s_Ports, CompareComPorts);
+
+            i_ComboRS232.Items.AddRange(s_Ports);
+            i_ComboRS232.DropDownWidth = i_ComboRS232.Width;
+        }
+
+        /// <summary>
+        /// Sort "COM2" before "COM10"
+        /// </summary>
+        private int CompareComPorts(String s_Port1, String s_Port2)
+        {
+            if (s_Port1.Length != s_Port2.Length)
+                return s_Port1.Length - s_Port2.Length;
+
+            return String.Compare(s_Port1, s_Port2, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
         /// Create a new instance of the class that is derived from IDevice and open the device
         /// i_Combo comes from EnumerateScpiDevices()
         /// </summary>
-        public IDevice OpenUsbDevice(ScpiCombo i_Combo)
+        public IUsbDevice OpenUsbDevice(ScpiCombo i_Combo)
         {
             return new UsbWin(i_Combo); // opens the device
+        }
+
+        // ============================ Audio Input ================================
+
+        /// <summary>
+        /// Enumerate active recording/capture endpoints (microphones, line-ins)
+        /// returns a List with an NAudio.CoreAudioApi.MMDevice instance for each audio input device
+        /// </summary>
+        public List<IAudioInDevice> EnumerateAudioInputDevices()
+        {
+            MMDeviceEnumerator i_Enumerator = new MMDeviceEnumerator();
+            MMDeviceCollection i_Devices = i_Enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active);
+
+            // MMDeviceEnumerator returns the full device names, but in the wrong order for WaveIn.DeviceNumber
+            // So the full names are stored to later look them up.
+            Dictionary<String, String> i_FullNames = new Dictionary<String, String>();
+            foreach (MMDevice i_Device in i_Devices)
+            {
+                String s_Short = i_Device.FriendlyName;
+                if (s_Short.Length > 31)
+                    s_Short = s_Short.Substring(0, 31);
+
+                i_FullNames[s_Short] = i_Device.FriendlyName;
+                i_Device.Dispose();
+            }
+
+            List<IAudioInDevice> i_DeviceList = new List<IAudioInDevice>();
+
+            // In this loop we get the correct index for WaveIn.DeviceNumber
+            for (int Idx = 0; Idx < WaveIn.DeviceCount; Idx++)
+            {
+                WaveInCapabilities i_Caps = WaveIn.GetCapabilities(Idx);
+
+                // WaveInCapabilities cripples the device name to the first 31 characters + terminating zero
+                String s_DeviceName = i_Caps.ProductName;
+                String s_FullName;
+                if (i_FullNames.TryGetValue(s_DeviceName, out s_FullName))
+                    s_DeviceName = s_FullName;
+
+                // Index 0 is always the device that the user has selected as default recording device in Control Panel
+                if (Idx == 0) s_DeviceName += "  [Default]";
+
+                i_DeviceList.Add(new WinAudioInDevice(Idx, s_DeviceName));
+            }
+            return i_DeviceList;
         }
     }
 }

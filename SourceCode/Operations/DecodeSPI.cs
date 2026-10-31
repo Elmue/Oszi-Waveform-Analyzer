@@ -60,7 +60,7 @@ using eCtrlChar         = OsziWaveformAnalyzer.Utils.eCtrlChar;
 using GraphMenuItem     = Operations.OperationManager.GraphMenuItem;
 using eSpiChip          = PostDecoder.PostDecoderManager.eSpiChip;
 using Utils             = OsziWaveformAnalyzer.Utils;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 using PostDecoderManager= PostDecoder.PostDecoderManager;
 using PlatformManager   = Platform.PlatformManager;
 
@@ -114,7 +114,7 @@ namespace Operations
         public void GetMenuItems(Channel i_Channel, bool b_Analog, List<GraphMenuItem> i_Items)
         {
             // At least 2 digital channels must exist for SPI
-            if (i_Channel == null || b_Analog || OsziPanel.CurCapture.ms32_DigitalCount < 2)
+            if (i_Channel == null || b_Analog || Utils.CurCapture.ms32_DigitalCount < 2)
                 return; 
 
             GraphMenuItem i_Item = new GraphMenuItem();
@@ -150,8 +150,8 @@ namespace Operations
 
             // Load the correct settings for the demo files
             String s_Settings;
-            if (OsziPanel.CurCapture.ms_Path == null ||
-                !mi_DemoFiles.TryGetValue(Path.GetFileName(OsziPanel.CurCapture.ms_Path), out s_Settings))
+            if (Utils.CurCapture.ms_Path == null ||
+                !mi_DemoFiles.TryGetValue(Path.GetFileName(Utils.CurCapture.ms_Path), out s_Settings))
                 s_Settings = Utils.RegReadString(eRegKey.SPI_Settg);
 
             Utils.SetControlValues(s_Settings, radioFullDuplex, radioHalfDuplex, checkChipSelect, comboClkEdge, comboDataBits, comboBitOrder, comboPolarity, comboChip);
@@ -159,7 +159,7 @@ namespace Operations
             if (comboChip.SelectedIndex < 0)
                 comboChip.SelectedIndex = 0; // "None"
 
-            foreach (Channel i_Channel in OsziPanel.CurCapture.mi_Channels)
+            foreach (Channel i_Channel in Utils.CurCapture.mi_Channels)
             {
                 comboCLK .Items.Add(i_Channel);
                 comboMISO.Items.Add(i_Channel);
@@ -270,10 +270,10 @@ namespace Operations
             catch (Exception Ex)
             {
                 Utils.ShowExceptionBox(this, Ex);
+                Utils.PanelOszi.RecalculateEverything();
             }
             Cursor = Cursors.Arrow;
 
-            Utils.OsziPanel.RecalculateEverything();
             DialogResult = DialogResult.OK;
         }
 
@@ -283,7 +283,7 @@ namespace Operations
         {
             ms32_Decoded = 0; // for status display
 
-            OsziPanel.CurCapture.ResetMarks();
+            Utils.CurCapture.ResetMarks();
 
             List<SpiPacket> i_Packets = new List<SpiPacket>();
             SpiPacket       i_Packet  = new SpiPacket();
@@ -315,7 +315,7 @@ namespace Operations
                 u8_LastSel = mi_CSEL.mu8_Digital[0];
             }
 
-            for (int S=0; S<OsziPanel.CurCapture.ms32_Samples; S++)
+            for (int S=0; S<Utils.CurCapture.ms32_Samples; S++)
             {
                 if (mi_CSEL != null)
                 {
@@ -445,10 +445,10 @@ namespace Operations
             RtfDocument i_RtfDoc     = new RtfDocument(Color.White);
             RtfBuilder  i_RtfBuilder = i_RtfDoc.CreateNewBuilder();
 
-            i_RtfBuilder.AppendLine(OsziPanel.GetChannelColor(mi_MOSI), "MOSI Data");
+            i_RtfBuilder.AppendLine(PanelOszi.GetChannelColor(mi_MOSI), "MOSI Data");
 
             if (mi_MISO != null)
-                i_RtfBuilder.AppendLine(OsziPanel.GetChannelColor(mi_MISO), "MISO Data");
+                i_RtfBuilder.AppendLine(PanelOszi.GetChannelColor(mi_MISO), "MISO Data");
 
             if (mi_CSEL != null)
                 i_RtfBuilder.AppendLine(Color.Lime, "Chip is selected between  <  and  >");
@@ -466,7 +466,8 @@ namespace Operations
             StringBuilder i_Line = new StringBuilder();
             foreach (SpiPacket i_Packet in i_Packets)
             {
-                i_RtfBuilder.AppendTimestampLine(i_Packet.ms32_StartSample, i_Packet.ms32_EndSample, false);
+                i_RtfBuilder.AppendTimestamp(true, i_Packet.ms32_StartSample, i_Packet.ms32_EndSample);
+                i_RtfBuilder.AppendNewLine();
 
                 for (int R=0; R<2; R++)
                 {
@@ -484,7 +485,7 @@ namespace Operations
                         i_Line.Append(' ');
                     }
 
-                    Color c_TxtCol = OsziPanel.GetChannelColor((R == 0) ? mi_MOSI : mi_MISO);
+                    Color c_TxtCol = PanelOszi.GetChannelColor((R == 0) ? mi_MOSI : mi_MISO);
                     i_RtfBuilder.AppendText(c_TxtCol, i_Line.ToString());
 
                     if (i_Packet.mb_ChipSel) 
@@ -503,7 +504,7 @@ namespace Operations
                 i_RtfBuilder.AppendLine(Utils.ERROR_COLOR, "Nothing detected");
 
             // Show RTF and switch to tab "Decoder"
-            Utils.FormMain.ShowAnalysisResult(i_RtfDoc, ms32_SmplPerBit); 
+            Utils.FormMain.ShowAnalysisResult(i_RtfDoc, ms32_SmplPerBit, "SPI Decoder Result"); 
         }
     }
 }

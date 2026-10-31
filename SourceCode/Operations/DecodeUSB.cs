@@ -56,7 +56,7 @@ using eRegKey           = OsziWaveformAnalyzer.Utils.eRegKey;
 using SmplMark          = OsziWaveformAnalyzer.Utils.SmplMark;
 using eMark             = OsziWaveformAnalyzer.Utils.eMark;
 using Utils             = OsziWaveformAnalyzer.Utils;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 using PlatformManager   = Platform.PlatformManager;
 
 namespace Operations
@@ -199,7 +199,7 @@ namespace Operations
                 {
                     // 12 MHz = 83.3333 ns
                     case eSpeed.Full:
-                        md_SmplPerBit = 1000000.0 / 12.0 / OsziPanel.CurCapture.ms64_SampleDist;
+                        md_SmplPerBit = 1000000.0 / 12.0 / Utils.CurCapture.ms64_SampleDist;
                         break;
                     default:
                         throw new NotImplementedException();
@@ -382,12 +382,12 @@ namespace Operations
             Channel i_ChanMinus = null;
             if (i_ChanPlus.ms_Name == "D+")
             {
-                i_ChanMinus = OsziPanel.CurCapture.FindChannel("D-");
+                i_ChanMinus = Utils.CurCapture.FindChannel("D-");
             }
             if (i_ChanPlus.ms_Name == "D-")
             {
                 i_ChanMinus = i_ChanPlus;
-                i_ChanPlus  = OsziPanel.CurCapture.FindChannel("D+");
+                i_ChanPlus  = Utils.CurCapture.FindChannel("D+");
             }
 
             if (i_ChanPlus  == null || i_ChanPlus .mu8_Digital == null ||
@@ -398,7 +398,6 @@ namespace Operations
 
             UsbPacket[] i_Packets = DecodePackets(i_ChanMinus, i_ChanPlus);
             ShowRtf(i_Packets);
-            Utils.OsziPanel.RecalculateEverything();
 
             Utils.EndBusyOperation(null);
 
@@ -888,7 +887,7 @@ namespace Operations
             i_Builder.AppendText(Color.White, "\n\nDecoded Packets:\n", FontStyle.Underline);
             foreach (UsbPacket i_Pack in i_Packets)
             {
-                i_Builder.AppendTimestampLine(i_Pack.ms32_StartSample, i_Pack.ms32_EndSample, true);
+                i_Builder.AppendTimestamp(true, i_Pack.ms32_StartSample, i_Pack.ms32_EndSample);
 
                 Color c_PID = (i_Pack.me_PID == ePid.STALL) ? Utils.ERROR_COLOR : Color.Yellow;
                 i_Builder.AppendText(c_PID, i_Pack.me_PID.ToString().PadRight(5));
@@ -1043,7 +1042,8 @@ namespace Operations
 
                         if (b_Display)
                         {
-                            i_Builder.AppendTimestampLine(i_Prev.ms32_StartSample, i_Prev.ms32_EndSample, true);
+                            i_Builder.AppendNewLineOnce();
+                            i_Builder.AppendTimestamp(true, i_Prev.ms32_StartSample, i_Prev.ms32_EndSample);
                             i_Builder.AppendText(Color.Magenta, "EP " + i_Prev.ms32_Endpoint.ToString().PadRight(3));
                             i_Builder.AppendText(Color.Yellow,  i_Prev.me_PID.ToString().PadRight(7));
 
@@ -1067,7 +1067,7 @@ namespace Operations
             // ==========================================================================================
 
             // Show RTF, if created and switch to tab "Decoder"
-            Utils.FormMain.ShowAnalysisResult(i_RtfDoc, (int)(mi_Timing.md_SmplPerBit + 0.5)); 
+            Utils.FormMain.ShowAnalysisResult(i_RtfDoc, (int)(mi_Timing.md_SmplPerBit + 0.5), "USB Decoder Result"); 
         }
     }
 }

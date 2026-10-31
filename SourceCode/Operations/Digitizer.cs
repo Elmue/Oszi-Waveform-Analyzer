@@ -46,13 +46,14 @@ using System.Windows.Forms;
 
 using RtfDocument       = OsziWaveformAnalyzer.RtfDocument;
 using RtfBuilder        = OsziWaveformAnalyzer.RtfBuilder;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 using Utils             = OsziWaveformAnalyzer.Utils;
 using eMark             = OsziWaveformAnalyzer.Utils.eMark;
 using SmplMark          = OsziWaveformAnalyzer.Utils.SmplMark;
 using Capture           = OsziWaveformAnalyzer.Utils.Capture;
 using Channel           = OsziWaveformAnalyzer.Utils.Channel;
 using eRegKey           = OsziWaveformAnalyzer.Utils.eRegKey;
+using Range             = OsziWaveformAnalyzer.Utils.Range;
 
 namespace Operations
 {
@@ -66,13 +67,13 @@ namespace Operations
         /// f_HysteresisPct = 0.1 means that 10% hysteresis is applied to average --> 5% below average to 5% above average
         /// This function does not work for Magnetic Stripe Track data.
         /// </summary>
-        public static void DigitizeAtAverage(Channel i_Channel, float f_HysteresisPct)
+        public static void DigitizeAtAverage(Channel i_Channel, Range k_Range, float f_HysteresisPct)
         {
             if (i_Channel.mu8_Digital != null)
                 return; // already digitized
 
             ApplyHysteresis(i_Channel, f_HysteresisPct);
-            ThresholdAD(i_Channel, i_Channel);
+            ThresholdAD(i_Channel, i_Channel, k_Range);
         }
 
         /// <summary>
@@ -133,21 +134,22 @@ namespace Operations
         /// i_Analog and i_Digital may be the same channel or i_Digital may be a new channel.
         /// This function does not work for Magnetic Stripe Track data.
         /// </summary>
-        public static void ThresholdAD(Channel i_Analog, Channel i_Digital)
+        public static void ThresholdAD(Channel i_Analog, Channel i_Digital, Range k_Range)
         {
-            if (i_Analog.mf_Analog == null)
+            float[] f_Analog = i_Analog.mf_Analog;
+            if (f_Analog == null)
                 return;
 
-            float[] f_Analog = i_Analog.mf_Analog;
-            float   f_Above  = i_Analog.mf_ThreshHi;
-            float   f_Below  = i_Analog.mf_ThreshLo;
+            if (i_Digital.mu8_Digital == null)
+                i_Digital.mu8_Digital = new Byte[f_Analog.Length];
 
-            Byte[] u8_Digital = new Byte[f_Analog.Length];
+            Byte[] u8_Digital = i_Digital.mu8_Digital;
+          
+            float f_Above = i_Analog.mf_ThreshHi;
+            float f_Below = i_Analog.mf_ThreshLo;
 
-            bool b_High   = f_Analog[0] >= f_Above;
-            u8_Digital[0] = b_High ? (Byte)1 : (Byte)0;
-
-            for (int S=1; S<f_Analog.Length; S++)
+            bool b_High = false;
+            for (int S=k_Range.ms32_Start; S<k_Range.ms32_End; S++)
             {
                 float f_Volt = f_Analog[S];
 
@@ -160,10 +162,9 @@ namespace Operations
                     b_High = true;
                 }
 
-                if (b_High) u8_Digital[S] = 1;
+                u8_Digital[S] = b_High ? (Byte)1 : (Byte)0;
             }
 
-            i_Digital.mu8_Digital = u8_Digital;
             i_Digital.mi_MarkRows = null;
             i_Digital.mi_SampleMinMax.mb_DigitalOK = false; // must be re-calculated
         }
@@ -175,12 +176,12 @@ namespace Operations
         /// It digitzes at 50% between the high and low peak voltages of each half period.
         /// f_MinAmplitudePct = 0.1 means that noise below 10% of the signal amplitude is ignored.
         /// </summary>
-        public static void DigitizeAdaptive(Channel i_Channel, float f_MinAmplitudePct)
+        public static void DigitizeAdaptive(Channel i_Channel, Range k_Range, float f_MinAmplitudePct)
         {
             if (i_Channel.mu8_Digital != null)
                 return; // already digitized
 
-            AdaptiveAD(i_Channel, i_Channel, f_MinAmplitudePct);
+            AdaptiveAD(i_Channel, i_Channel, k_Range, f_MinAmplitudePct);
         }
 
         /// <summary>
@@ -189,25 +190,28 @@ namespace Operations
         /// f_MinAmplitudePct = 0.1 means that noise below 10% of the signal amplitude is ignored.
         /// i_Analog and i_Digital may be the same channel or i_Digital may be a new channel.
         /// </summary>
-        public static void AdaptiveAD(Channel i_Analog, Channel i_Digital, float f_MinAmplitudePct)
+        public static void AdaptiveAD(Channel i_Analog, Channel i_Digital, Range k_Range, float f_MinAmplitudePct)
         {
-            if (i_Analog.mf_Analog == null)
+            float[] f_Analog  = i_Analog.mf_Analog;
+            if (f_Analog == null)
                 return;
+
+            if (i_Digital.mu8_Digital == null)
+                i_Digital.mu8_Digital = new Byte[f_Analog.Length];
+
+            Byte[] u8_Digital = i_Digital.mu8_Digital;
 
             float f_MinAmplVolt = (i_Analog.mf_Max - i_Analog.mf_Min) * f_MinAmplitudePct;
 
-            float[] f_Analog  = i_Analog.mf_Analog;
-            Byte[] u8_Digital = new Byte[f_Analog.Length];
-
             bool b_SearchHigh = false;
-            for (int S=1; S<f_Analog.Length; S++)
+            for (int S=k_Range.ms32_Start + 1; S<k_Range.ms32_End; S++)
             {
-                if (f_Analog[S] > f_Analog[0] + f_MinAmplVolt)
+                if (f_Analog[S] > f_Analog[k_Range.ms32_Start] + f_MinAmplVolt)
                 {
                     b_SearchHigh = false;
                     break;
                 }
-                if (f_Analog[S] < f_Analog[0] - f_MinAmplVolt)
+                if (f_Analog[S] < f_Analog[k_Range.ms32_Start] - f_MinAmplVolt)
                 {
                     b_SearchHigh = true;
                     break;
@@ -222,8 +226,10 @@ namespace Operations
             int   s32_SplLow   = 0;
             int   s32_SplHL    = 0;
             int   s32_SplLH    = 0;
-            for (int S=1; S<f_Analog.Length; S++)
+            for (int S=k_Range.ms32_Start; S<k_Range.ms32_End; S++)
             {
+                u8_Digital[S] = 0;
+
                 float f_Volt = f_Analog[S];
                 if (b_SearchHigh)
                 {
@@ -296,7 +302,6 @@ namespace Operations
                 }
             }
 
-            i_Digital.mu8_Digital = u8_Digital;
             i_Digital.mi_MarkRows = null;
             i_Digital.mi_SampleMinMax.mb_DigitalOK = false; // must be re-calculated
         }
@@ -308,13 +313,13 @@ namespace Operations
         /// f_Hysteresis = 0.1 means that 10% hysteresis is applied to average --> 5% below average to 5% above average.
         /// This function is not useful for square signals!
         /// </summary>
-        public static void DigitizeAtMinMax(Channel i_Channel, float f_Hysteresis)
+        public static void DigitizeAtMinMax(Channel i_Channel, Range k_Range, float f_Hysteresis)
         {
             if (i_Channel.mu8_Digital != null)
                 return; // already digitized
 
             ApplyHysteresis(i_Channel, f_Hysteresis);
-            MinMaxAD(i_Channel, i_Channel);
+            MinMaxAD(i_Channel, i_Channel, k_Range);
         }
 
         /// <summary>
@@ -322,51 +327,49 @@ namespace Operations
         /// i_Analog and i_Digital may be the same channel or i_Digital may be a new Channel.
         /// This function is not useful for square signals!
         /// </summary>
-        public static void MinMaxAD(Channel i_Analog, Channel i_Digital)
+        public static void MinMaxAD(Channel i_Analog, Channel i_Digital, Range k_Range)
         {
-            if (i_Analog.mf_Analog == null)
+            float[] f_Analog = i_Analog.mf_Analog;
+            if (f_Analog == null)
                 return;
 
-            float[] f_Analog =  i_Analog.mf_Analog;
-            float   f_Above  =  i_Analog.mf_ThreshHi;
-            float   f_Below  =  i_Analog.mf_ThreshLo;
-            float   f_Middle = (i_Analog.mf_ThreshHi + i_Analog.mf_ThreshLo) / 2.0f;
+            if (i_Digital.mu8_Digital == null)
+                i_Digital.mu8_Digital = new Byte[f_Analog.Length];
 
-            Byte[] u8_Digital = new Byte[f_Analog.Length];
+            Byte[] u8_Digital = i_Digital.mu8_Digital;
+
+            float f_Above  =  i_Analog.mf_ThreshHi;
+            float f_Below  =  i_Analog.mf_ThreshLo;
+            float f_Middle = (i_Analog.mf_ThreshHi + i_Analog.mf_ThreshLo) / 2.0f;
 
             bool  b_High    = false;
             float f_Highest = float.MinValue;
             float f_Lowest  = float.MaxValue;
             int s32_SplHigh = 0;
             int s32_SplLow  = 0;
-            for (int S=0; S<f_Analog.Length; S++)
+            for (int S=k_Range.ms32_Start; S<k_Range.ms32_End; S++)
             {
+                u8_Digital[S] = 0;
+
                 float f_Volt = f_Analog[S];
-                if (S == 0)
+                if (b_High && f_Volt < f_Below) // below threshold
                 {
-                    b_High = f_Volt > f_Above;
+                    b_High = false;
+                    f_Highest = f_Middle;
                 }
-                else
+                else if (!b_High && f_Volt > f_Above) // above threshold
                 {
-                    if (b_High && f_Volt < f_Below) // below threshold
+                    b_High = true;
+                    f_Lowest = f_Middle;
+                    if (s32_SplLow > s32_SplHigh)
                     {
-                        b_High = false;
-                        f_Highest = f_Middle;
-                    }
-                    else if (!b_High && f_Volt > f_Above) // above threshold
-                    {
-                        b_High = true;
-                        f_Lowest = f_Middle;
-                        if (s32_SplLow > s32_SplHigh)
+                        // fill all the intermediate samples with 1 (HIGH)
+                        for (int i=s32_SplHigh; i<s32_SplLow; i++)
                         {
-                            // fill all the intermediate samples with 1 (HIGH)
-                            for (int i=s32_SplHigh; i<s32_SplLow; i++)
-                            {
-                                u8_Digital[i] = 1;
-                            }
+                            u8_Digital[i] = 1;
                         }
                     }
-                }                    
+                }
                 
                 // Do not toggle if there is noise between Below and Above
                 if (b_High && f_Volt > f_Highest && f_Volt > f_Above)
@@ -381,7 +384,6 @@ namespace Operations
                 }
             }
 
-            i_Digital.mu8_Digital = u8_Digital;
             i_Digital.mi_MarkRows = null;
             i_Digital.mi_SampleMinMax.mb_DigitalOK = false; // must be re-calculated
         }

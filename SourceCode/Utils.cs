@@ -38,9 +38,13 @@ NAMING CONVENTIONS which allow to see the type of a variable immediately without
 using System;
 using System.IO;
 using System.Text;
+using System.Net;
+using System.Net.Sockets;
 using System.ComponentModel;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Reflection;
 using System.Diagnostics;
 using System.Windows.Forms;
@@ -49,8 +53,13 @@ using Microsoft.Win32;
 using System.Runtime.InteropServices;
 using Microsoft.VisualBasic.FileIO;
 
-using SplMinMax         = OsziWaveformAnalyzer.OsziPanel.SplMinMax;
+using SplMinMax         = OsziWaveformAnalyzer.PanelOszi.SplMinMax;
 using PlatformManager   = Platform.PlatformManager;
+using eOsziSerie        = Transfer.TransferManager.eOsziSerie;
+using PanelXY           = OsziWaveformAnalyzer.PanelXY;
+using ComboItem         = OsziWaveformAnalyzer.ComboBoxEx.ComboItem;
+using eComboImg         = OsziWaveformAnalyzer.ComboBoxEx.eComboImg;
+using ComboBoxEx        = OsziWaveformAnalyzer.ComboBoxEx;
 
 namespace OsziWaveformAnalyzer
 {
@@ -60,24 +69,34 @@ namespace OsziWaveformAnalyzer
 
         public enum eRegKey
         {
+            // ------ Main Window -------
             MainWindow,
             OsziSerie,
+            UserDirectory,
             InstallPath,
+            // ------ Oszi Panel -------
+            ShowLegend,
+            SeparateChannel,
+            // ------ Controls -------
             AnalogHeightSeparate,
             AnalogHeightCommon,
             DigitalHeight,
-            ShowLegend,
-            SeparateChannel,
-            TransferMemory,
+            XYGlowCount,
+            XYPlayStep,
+            FFTWindow,
+            FFTScale,
+            FFTLogarithmic,
+            FFTRemoveDC,
+            FFTRemoveNoise,
+            // ------ DC Capture -------
             CaptureInterval,
             CaptureTotTime,
-            SendCommand,
-            ConnectMode,
-            ConnectUSB,
-            ConnectTCP,
-            ConnectVXI,
-            LinkVXI,
-            // ------------
+            // ------ Audio Record -------
+            AudioInDevice,
+            AudioInChannels,
+            AudioInBits,
+            AudioInSamplerate,
+            // ------ Operation settings -------
             RasterInterval,
             RasterUnit,
             RS232_Settg,
@@ -94,6 +113,21 @@ namespace OsziWaveformAnalyzer
             CanSplPointFD,
             CanEnableFD,
             CanIdleHigh,
+            MathOperation,
+
+            // ======= Stored in Registry Subkey ========
+            // --------- Oszi Specific settings ---------
+            ConnectMode = 1000,
+            USB_Device,
+            TCP_AddrPort,
+            VXI_Address,
+            VXI_Link,   
+            RS232_Port, 
+            RS232_Baud, 
+            RS232_Config,
+            RS232_OverTCP,
+            TransferMemory,
+            SendCommand,
         }
 
         public enum eMark : byte
@@ -144,6 +178,25 @@ namespace OsziWaveformAnalyzer
             US,  // 31, 0x1F
         }
 
+        public enum eMouseDrag
+        {
+            None,
+            Move,   // The user is dragging the mouse in a panel to move the graph    (no key pressed)
+            Select, // The user is dragging the mouse in a panel to select a range    (SHIFT pressed)
+            Zoom,   // The user is dragging the mouse in a panel to zoom into a range (CTRL pressed)
+        }
+
+        #endregion
+
+        #region class AbortException
+
+        public class AbortException : Exception
+        {
+            public AbortException() : base("User has aborted")
+            {
+            }
+        }
+
         #endregion
 
         #region class Capture
@@ -154,7 +207,7 @@ namespace OsziWaveformAnalyzer
             public String        ms_Path;           // original load path
             public int           ms32_Samples;      // total count of samples in this capture
             public Int64         ms64_SampleDist;   // the time between 2 neighboured samples in pico seconds
-            public int           ms32_AnalogRes;    // the resolution of the A/D converter in the oscilloscope in bits (Rigol = 8 bit)
+            public int           ms32_AnalogRes;    // resolution of A/D converter in bits (including the sign bit). Maximum resolution of a float is 24 bit.
             public List<Channel> mi_Channels     = new List<Channel>();
             public int[]         ms32_Separators = new int[0]; // Sample positions where to draw a red vertical line (used for OWON Frames)
             public bool          mb_Dirty;          // the user has modified channels after loading the capture for the first time (unsaved changes).
@@ -304,7 +357,7 @@ namespace OsziWaveformAnalyzer
             public List<SmplMark>[] mi_MarkRows;   // Mark Row 1: clock marks and decoded bits, Mark Row 2: decoded bytes / ASCII
             
             // ===================================================
-            //    Used internally by OsziPanel. Do not modify!
+            //    Used internally by PanelOszi. Do not modify!
             // ===================================================
             public int       ms32_ColorIdx;   // A channel has the same color as long as it lives
             public bool      mb_AnalHidden;   // true --> do not draw the analog signal (checkbox is off)
@@ -428,65 +481,116 @@ namespace OsziWaveformAnalyzer
 
         #endregion
 
-        #region class ComboPath
+        #region struct Range
 
         /// <summary>
-        /// For ComboBox "Input File": Store full Path but display only Filename.
+        /// IMPORTANT: struct, NOT class!
         /// </summary>
-        public class ComboPath
+        public struct Range
         {
-            public String ms_Path;
+            public int ms32_Start;
+            public int ms32_End;
 
-            public ComboPath(String s_Path)
+            public bool IsValid
             {
-                ms_Path = s_Path;
+                get { return ms32_End > ms32_Start; }
+            }
+
+            public int Count
+            {
+                get { return ms32_End - ms32_Start; }
+            }
+
+            public Range(int s32_Start, int s32_End)
+            {
+                ms32_Start = s32_Start;
+                ms32_End   = s32_End;
+            }
+
+            public void Reset()
+            {
+                ms32_Start = 0;
+                ms32_End   = 0;
+            }
+
+            public Range Intersection(Range k_Range)
+            {
+                Range k_Inter = new Range(Math.Max(ms32_Start, k_Range.ms32_Start),
+                                          Math.Min(ms32_End,   k_Range.ms32_End));
+                if (!k_Inter.IsValid) 
+                     k_Inter.Reset();
+
+                return k_Inter;
             }
 
             public override string ToString()
             {
-                if (ms_Path == null)
-                    return "No files found";
-
-                return Path.GetFileName(ms_Path);
+                return String.Format("[{0} ... {1}]", ms32_Start, ms32_End);
             }
         }
 
         #endregion
 
+        public delegate void delInvokeVoid();
         public delegate bool delInvokeBool();
 
-        public  const  String     APP_VERSION       = "v2.7"; // displayed in Main Window Title
-        public  const  int        MIN_VALID_SAMPLES = 100;    // Error if loaded file contains less samples
-        public  const  String     ERR_MIN_SAMPLES   = "The minimum amount of samples is 100.";
-        public  const  String     NO_SAMPLES_LOADED = "No samples loaded. Use button 'Capture' or select an Input file.";
-        public  const  Decimal    PICOS_PER_SECOND  = 1000000000000; // pico seconds in one seond (12 zeros)
-        public  const  String     CMD_LINE_ACTION   = " -open ";
-        public  static Color      ERROR_COLOR       = Color.FromArgb(0xFF, 0x55, 0x33); // Red is too dark
-        public  static Brush      ERROR_BRUSH       = new SolidBrush(ERROR_COLOR);
-        public  static int        MIN_ANAL_RES      =  7; // Minimum analog resolution = 128 steps
-        public  static int        MAX_ANAL_RES      = 16; // Maximum analog resolution = 65536 steps
-        public  static String[]   TIME_UNITS        = new String[] { "ps", "ns", "µs", "ms", "sec" };
-        public  static Encoding   ENCODING_ANSI     = Encoding.GetEncoding(1252);
+        public  const  String       APP_VERSION       = "v3.0"; // displayed in Main Window Title
+        public  const  int          MIN_VALID_SAMPLES = 100;    // Error if loaded file contains less samples
+        public  const  int          MAX_MEMORY = 256 * 1024 * 1024; // ask user if he wants to load more than 250 MB of a file to memory
+        public  const  String       ERR_MIN_SAMPLES   = "The minimum amount of samples is 100.";
+        public  const  String       NO_SAMPLES_LOADED = "No samples loaded. Use button 'Capture' or select an Input file.";
+        public  const  String       TOOLTIP_SEPARATOR = "—————————————\n";
+        public  const  Decimal      PICOS_PER_SECOND  = 1000000000000; // pico seconds in one seond (12 zeros)
+        public  const  String       CMD_LINE_ACTION   = " -open ";
+        public  static Color        ERROR_COLOR       = Color.FromArgb(0xFF, 0x55, 0x33); // Red is too dark
+        public  static Brush        ERROR_BRUSH       = new SolidBrush(ERROR_COLOR);
+        public  static Brush        HIGHLIGHT_BRUSH   = new SolidBrush(Color.FromArgb(0x80, 0x44, 0x44, 0xFF)); // transparent
+        public  static String[]     TIME_UNITS        = new String[] { "ps", "ns", "µs", "ms", "sec" };
+        public  static Encoding     ENCODING_ANSI     = Encoding.GetEncoding(1252);
+        public  static Pen          PEN_GRID          = new Pen       (Color.FromArgb(0x30, 0x30, 0x30));
+        public  static Pen          PEN_AXIS          = new Pen       (Color.FromArgb(0x60, 0x60, 0x60));
+        public  static Brush        BRUSH_LABEL       = new SolidBrush(Color.FromArgb(0xC0, 0xC0, 0xC0));
         // -----------------------------------------
-        private const  String     REGISTRY_PATH     = "HKEY_CURRENT_USER\\Software\\ElmueSoft\\Oszi Waveform Analyzer";               
-        private static FormMain   mi_Main;
-        private static OsziPanel  mi_OsziPanel;
-        private static String     ms_AppDir;
-        private static String     ms_SampleDir;
-        private static String     ms_WinInstaller;
-        private static String     ms_HelpHtmlPath;
-        private static bool       mb_Busy;
-        private static Image      mi_OsziImg;
+        private const  String       REGISTRY_PATH     = "HKEY_CURRENT_USER\\Software\\ElmueSoft\\Oszi Waveform Analyzer";       
+        private static Capture      mi_Capture;
+        private static FormMain     mi_Main;
+        private static PanelOszi    mi_PanelOszi;
+        private static PanelXY      mi_PanelXY;
+        private static PanelFFT     mi_PanelFFT;
+        private static String       ms_AppDir;
+        private static String       ms_SampleDir;
+        private static String       ms_UserDir;
+        private static String       ms_WinInstaller;
+        private static String       ms_HelpHtmlPath;
+        private static bool         mb_Busy;
+        private static IPAddress    mi_LocalIp4Addr;
+        private static Stopwatch    mi_MeasureSpeed     = new Stopwatch();
+        private static StringFormat mi_AlignTopLeft     = new StringFormat();
+        private static StringFormat mi_AlignTopCenter   = new StringFormat();
+        private static StringFormat mi_AlignTopRight    = new StringFormat();
+        private static StringFormat mi_AlignBottomRight = new StringFormat();
+        private static List<Image>  mi_ComboImages      = new List<Image>();
 
         public static String AppDir
         {
             get { return ms_AppDir; }
         }
 
+        /// <summary>
+        /// Default application subfolder 'Samples'
+        /// </summary>
         public static String SampleDir
         {
             get { return ms_SampleDir; }
-            set { ms_SampleDir = value; }
+        }
+
+        /// <summary>
+        /// Arbitrary folder selected by user
+        /// </summary>
+        public static String UserDir
+        {
+            get { return ms_UserDir; }
+            set { ms_UserDir = value; }
         }
 
         public static String WinInstallerPath
@@ -499,14 +603,30 @@ namespace OsziWaveformAnalyzer
             get { return ms_HelpHtmlPath; }
         }
 
+        public static Capture CurCapture
+        {
+            get { return mi_Capture;   }
+            set { mi_Capture = value;  }
+        }
+
         public static FormMain FormMain
         {
             get { return mi_Main; }
         }
 
-        public static OsziPanel OsziPanel
+        public static PanelOszi PanelOszi
         {
-            get { return mi_OsziPanel; }
+            get { return mi_PanelOszi; }
+        }
+
+        public static PanelXY PanelXY
+        {
+            get { return mi_PanelXY; }
+        }
+
+        public static PanelFFT PanelFFT
+        {
+            get { return mi_PanelFFT; }
         }
 
         public static bool IsBusy
@@ -514,40 +634,81 @@ namespace OsziWaveformAnalyzer
             get { return mb_Busy; }
         }
 
-        public static Image OsziImg
+        public static IPAddress LocalIp4Addr
         {
-            get 
-            { 
-                if (mi_OsziImg == null)
-                    mi_OsziImg = LoadResourceImage("Oszi.png");
+            get { return mi_LocalIp4Addr; }
+        }
 
-                return mi_OsziImg; 
-            }
+        public static StringFormat AlignTopLeft
+        {
+            get { return mi_AlignTopLeft; }
+        }
+        public static StringFormat AlignTopCenter
+        {
+            get { return mi_AlignTopCenter; }
+        }
+        public static StringFormat AlignTopRight
+        {
+            get { return mi_AlignTopRight; }
+        }
+        public static StringFormat AlignBottomRight 
+        {
+            get { return mi_AlignBottomRight; }
+        }
+
+        // ------------------------------
+
+        /// <summary>
+        /// Get an image that is displayed in the drop down list of a combobox
+        /// </summary>
+        public static Image GetComboImage(eComboImg e_Image)
+        {
+            return mi_ComboImages[(int)e_Image];
         }
 
         // --------------------------------------------------------------------------
 
-        public static void Init(FormMain i_Main, OsziPanel i_OsziPanel)
+        public static void Init(FormMain i_Main, PanelOszi i_OsziPanel, PanelXY i_PanelXY, PanelFFT i_PanelFFT)
         {
             mi_Main      = i_Main;
-            mi_OsziPanel = i_OsziPanel;
+            mi_PanelOszi = i_OsziPanel;
+            mi_PanelXY   = i_PanelXY;
+            mi_PanelFFT  = i_PanelFFT;
+
+            mi_AlignTopLeft    .Alignment     = StringAlignment.Near;
+            mi_AlignTopLeft    .LineAlignment = StringAlignment.Near;
+            mi_AlignTopCenter  .Alignment     = StringAlignment.Center;
+            mi_AlignTopCenter  .LineAlignment = StringAlignment.Near;
+            mi_AlignTopRight   .Alignment     = StringAlignment.Far;
+            mi_AlignTopRight   .LineAlignment = StringAlignment.Near;
+            mi_AlignBottomRight.Alignment     = StringAlignment.Far;
+            mi_AlignBottomRight.LineAlignment = StringAlignment.Far;
+
+            PEN_GRID.DashStyle = DashStyle.Dash;
 
             try
             {
                 ms_AppDir    = Path.GetDirectoryName(Application.ExecutablePath);
                 ms_SampleDir = Path.Combine(ms_AppDir, "Samples");
+                ms_UserDir   = RegReadString(eRegKey.UserDirectory, "").TrimEnd('\\');
+                if (String.Compare(ms_UserDir, ms_SampleDir, true) == 0)
+                    ms_UserDir = "";
 
                 ms_WinInstaller = Path.Combine(ms_AppDir, "Driver", "dpinst-amd64.exe");
                 String s_Driver = Path.Combine(ms_AppDir, "Driver", "amd64", "ausbtmc.sys");
                 if (!File.Exists(ms_WinInstaller) || !File.Exists(s_Driver))
-                    throw new Exception("Driver files not found");
+                    throw new Exception("Driver files are missing.");
 
                 ms_HelpHtmlPath = Path.Combine(ms_AppDir, "Manual.htm");
                 if (!File.Exists(ms_HelpHtmlPath))
-                    throw new Exception("Help HTML file not found");
+                    throw new Exception("Manual is missing.");
 
                 if (!File.Exists(Path.Combine(ms_AppDir, "Images", "OsziWaveformAnalyzer.png")))
-                    throw new Exception("Help HTML is incomplete");
+                    throw new Exception("Images are missing.");
+
+                if (!File.Exists(Path.Combine(ms_AppDir, "NAudio.dll")) ||
+                    !File.Exists(Path.Combine(ms_AppDir, "NAudio.Flac.dll")))
+                    throw new Exception("DLL files are missing.");
             }
             catch (Exception Ex)
             {
@@ -575,6 +736,23 @@ namespace OsziWaveformAnalyzer
 
             // ----------------------------------------------------------
 
+            try
+            {
+                // Get the local IP address of the computer
+                String s_Computer = Dns.GetHostName();
+                Dns.BeginGetHostEntry(s_Computer, GetHostCallback, null);
+            }
+            catch {}
+
+            // ----------------------------------------------------------
+
+            foreach (eComboImg e_Image in Enum.GetValues(typeof(eComboImg)))
+            {
+                mi_ComboImages.Add(LoadResourceImage("Combo" + e_Image + ".png"));
+            }
+
+            // ----------------------------------------------------------
+
             // Associate file extension *.oszi with this program
             PlatformManager.Instance.AssociateOsziExtension();
 
@@ -584,6 +762,24 @@ namespace OsziWaveformAnalyzer
             PlatformManager.Instance.CreateShortcutInStartMenu();
         }
 
+        /// <summary>
+        /// Get the local IP address of the computer
+        /// </summary>
+		private static void GetHostCallback(IAsyncResult i_Result)
+		{
+            IPHostEntry i_Entry = Dns.EndGetHostEntry(i_Result);
+            foreach (IPAddress i_Addr in i_Entry.AddressList)
+            {
+                // Ignore 127.0.0.1 and IPv6 addresses
+                if (!IPAddress.IsLoopback(i_Addr) && 
+                    i_Addr.AddressFamily == AddressFamily.InterNetwork)
+                {
+                    mi_LocalIp4Addr = i_Addr;
+                    break;
+                }
+            }
+		}
+
         // --------------------------------------------------------------------------
 
         /// <summary>
@@ -592,11 +788,15 @@ namespace OsziWaveformAnalyzer
         public static void ComboAdjustDropDownWidth(ComboBox i_Combo)
         {
             int s32_Width = i_Combo.Width;
+            int s32_IconWidth = 0;
 
             foreach (Object o_Item in i_Combo.Items)
             {
+                if (o_Item is ComboItem)
+                    s32_IconWidth = ComboBoxEx.ICON_SPACE;
+
                 Size k_Size = TextRenderer.MeasureText(o_Item.ToString(), i_Combo.Font);
-                s32_Width = Math.Max(s32_Width, k_Size.Width + 5);
+                s32_Width = Math.Max(s32_Width, s32_IconWidth + k_Size.Width + 5);
             }
 
             if (i_Combo.Items.Count > i_Combo.MaxDropDownItems)
@@ -638,37 +838,44 @@ namespace OsziWaveformAnalyzer
 
         /// <summary>
         /// Format a time interval given in pico seconds (10E-12 seconds)
-        /// returns "1.2 ms"
+        /// s32_Digits = -1 --> up to  3 decimals behind the decimal point, remove trailing zeroes
+        /// s32_Digits =  2 --> always 2 decimals behind the decimal point
+        /// s32_Digits =  5 --> always 5 decimals behind the decimal point
         /// </summary>
-        public static String FormatTimePico(decimal d_Time)
+        public static String FormatTimePico(decimal d_Time, int s32_Digits = -1)
         {
+            String s_Formatter = "{0}{1:0.###}";
+            if (s32_Digits >= 0)
+                s_Formatter = "{0}{1:0." + new String('0', s32_Digits) + "}";
+
             String s_Sign = (d_Time < 0) ? "-" : "";
             d_Time = Math.Abs(d_Time);
 
             if (d_Time < 1000)
-                return String.Format("{0}{1:0.###} ps", s_Sign, d_Time).Replace(',', '.'); // pico
+                return String.Format(s_Formatter + " ps", s_Sign, d_Time).Replace(',', '.'); // pico
 
             d_Time /= 1000;
             if (d_Time < 1000)
-                return String.Format("{0}{1:0.###} ns", s_Sign, d_Time).Replace(',', '.'); // nano
+                return String.Format(s_Formatter + " ns", s_Sign, d_Time).Replace(',', '.'); // nano
 
             d_Time /= 1000;
             if (d_Time < 1000)
-                return String.Format("{0}{1:0.###} µs", s_Sign, d_Time).Replace(',', '.'); // micro
+                return String.Format(s_Formatter + " µs", s_Sign, d_Time).Replace(',', '.'); // micro
 
             d_Time /= 1000;            
             if (d_Time < 1000)
-                return String.Format("{0}{1:0.###} ms", s_Sign, d_Time).Replace(',', '.'); // milli
+                return String.Format(s_Formatter + " ms", s_Sign, d_Time).Replace(',', '.'); // milli
 
+            int s32_Milli = (int)d_Time % 1000;
             d_Time /= 1000;
             if (d_Time < 60) // < 1 minute
-                return String.Format("{0}{1:0.###} sec", s_Sign, d_Time).Replace(',', '.');
+                return String.Format(s_Formatter + " sec", s_Sign, d_Time).Replace(',', '.');
 
             int s32_Sec  = (int)d_Time;
             int s32_Min  = s32_Sec  / 60;
             int s32_Hour = s32_Min  / 60;
             if (s32_Hour == 0) // < 1 hour
-                return String.Format("{0}{1:D2}:{2:D2} min", s_Sign, s32_Min, s32_Sec % 60);
+                return String.Format("{0}{1:D2}:{2:D2}.{3:D3} min", s_Sign, s32_Min, s32_Sec % 60, s32_Milli);
 
             int s32_Day = s32_Hour / 24;
             if (s32_Day == 0) // < 1 day
@@ -677,41 +884,110 @@ namespace OsziWaveformAnalyzer
             return String.Format("{0}{1} days, {2} hours", s_Sign, s32_Day, s32_Hour % 24);
         }
 
-        public static String FormatFrequency(decimal d_Frequ)
+        /// <summary>
+        /// s32_Digits = -1 --> up to  3 decimals behind the decimal point, remove trailing zeroes
+        /// s32_Digits =  2 --> always 2 decimals behind the decimal point
+        /// s32_Digits =  5 --> always 5 decimals behind the decimal point
+        /// </summary>
+        public static String FormatFrequency(decimal d_Frequ, int s32_Digits = -1)
         {
+            String s_Formatter = "{0:0.###}";
+            if (s32_Digits >= 0)
+                s_Formatter = "{0:0." + new String('0', s32_Digits) + "}";
+
             if (d_Frequ < 1000)
-                return String.Format("{0:0.###} Hz", d_Frequ).Replace(',', '.');
+                return String.Format(s_Formatter + " Hz", d_Frequ).Replace(',', '.');
 
             d_Frequ /= 1000;
             if (d_Frequ < 1000)
-                return String.Format("{0:0.###} kHz", d_Frequ).Replace(',', '.');
+                return String.Format(s_Formatter + " kHz", d_Frequ).Replace(',', '.');
 
             d_Frequ /= 1000;
             if (d_Frequ < 1000)
-                return String.Format("{0:0.###} MHz", d_Frequ).Replace(',', '.');
+                return String.Format(s_Formatter + " MHz", d_Frequ).Replace(',', '.');
 
             d_Frequ /= 1000;
-            return String.Format("{0:0.###} GHz", d_Frequ).Replace(',', '.');
+            return String.Format(s_Formatter + " GHz", d_Frequ).Replace(',', '.');
         }       
 
-        public static String FormatSize(decimal d_Size)
+        /// <summary>
+        /// s32_Digits = -1 --> up     1 decimal  behind the decimal point, remove trailing zeroes
+        /// s32_Digits =  2 --> always 2 decimals behind the decimal point
+        /// s32_Digits =  5 --> always 5 decimals behind the decimal point
+        /// </summary>
+        public static String FormatSize(decimal d_Size, int s32_Digits = -1)
         {
             if (d_Size < 1024)
                 return d_Size + " Byte";
 
-            d_Size /= 1024;
-            if (d_Size < 1024)
-                return String.Format("{0:0.#} kB", d_Size).Replace(',', '.');
+            String s_Formatter = "{0:0.#}";
+            if (s32_Digits >= 0)
+                s_Formatter = "{0:0." + new String('0', s32_Digits) + "}";
 
             d_Size /= 1024;
             if (d_Size < 1024)
-                return String.Format("{0:0.#} MB", d_Size).Replace(',', '.');
+                return String.Format(s_Formatter + " kB", d_Size).Replace(',', '.');
 
             d_Size /= 1024;
-            return String.Format("{0:0.#} GB", d_Size).Replace(',', '.');
+            if (d_Size < 1024)
+                return String.Format(s_Formatter + " MB", d_Size).Replace(',', '.');
+
+            d_Size /= 1024;
+            return String.Format(s_Formatter + " GB", d_Size).Replace(',', '.');
+        }
+
+        public static String FormatSpeed(decimal d_Speed)
+        {
+            if (d_Speed < 1024)
+                return (int)d_Speed + " Byte/s";
+
+            d_Speed /= 1024;
+            if (d_Speed < 1024)
+                return String.Format("{0:0.#} kB/s", d_Speed).Replace(',', '.');
+
+            d_Speed /= 1024;
+            if (d_Speed < 1024)
+                return String.Format("{0:0.#} MB/s", d_Speed).Replace(',', '.');
+
+            d_Speed /= 1024;
+            return String.Format("{0:0.#} GB/s", d_Speed).Replace(',', '.');
+        }
+
+        /// <summary>
+        /// s32_Digits = -1 --> up     1 decimal  behind the decimal point, remove trailing zeroes
+        /// s32_Digits =  2 --> always 2 decimals behind the decimal point
+        /// s32_Digits =  5 --> always 5 decimals behind the decimal point
+        /// </summary>
+        public static String FormatVoltage(double d_Volt, int s32_Digits = -1)
+        {
+            String s_Formatter = "{0:0.#}";
+            if (s32_Digits >= 0)
+                s_Formatter = "{0:0." + new String('0', s32_Digits) + "}";
+
+            if (Math.Abs(d_Volt) >= 1.0)
+                return String.Format(s_Formatter + " V", d_Volt).Replace(',', '.');
+
+            d_Volt *= 1000.0;
+            if (Math.Abs(d_Volt) >= 1.0)
+                return String.Format(s_Formatter + " mV", d_Volt).Replace(',', '.');
+
+            d_Volt *= 1000.0;
+            if (Math.Abs(d_Volt) >= 1.0)
+                return String.Format(s_Formatter + " µV", d_Volt).Replace(',', '.');
+
+            // do not display nano Volts
+            return String.Format(s_Formatter + " V", 0.0).Replace(',', '.');
         }
 
         // --------------------------------------------------------------------------
+
+        public static String SafeToString(Object o_Value)
+        {
+            if (o_Value == null)
+                return "";
+            else
+                return o_Value.ToString();
+        }
 
         /// <summary>
         /// Converts all words in the text which are entriely uppercase into mixed case.
@@ -857,6 +1133,39 @@ namespace OsziWaveformAnalyzer
             return i_Hex.ToString();
         }
 
+        /// <summary>
+        /// Convert 8, 16 or 24 bit sample data into a float value between -1.0 to +1.0
+        /// The signed PCM sample data comes with the first byte = low byte
+        /// </summary>
+        public static float SampleBytesToFloat(int s32_Bits, Byte[] u8_Buffer, ref int s32_Offset)
+        {
+            switch (s32_Bits)
+            {
+                case 8:
+                    SByte s8_Data = (SByte)(u8_Buffer[s32_Offset] - 128);
+                    s32_Offset += 1;
+                    return (float)s8_Data / 128f;
+
+                case 16:
+                    Int16 s16_Data = (Int16)((u8_Buffer[s32_Offset + 1] << 8)
+                                           | (u8_Buffer[s32_Offset + 0]));
+                    s32_Offset += 2;
+                    return (float)s16_Data / 32768.0f;
+
+                case 24:
+                    int s32_Data = (u8_Buffer[s32_Offset + 2] << 24)
+                                 | (u8_Buffer[s32_Offset + 1] << 16)
+                                 | (u8_Buffer[s32_Offset + 0] <<  8);
+                    s32_Offset += 3;
+                    s32_Data >>= 8;  // shift the sign bit (bit 31) into the bits 24 ... 30
+                    return (float)s32_Data / 8388608.0f;                  
+
+                default:
+                    Debug.Assert(false, "Bit count not implemented: " + s32_Bits);
+                    return 0;
+            }
+        }
+
         // --------------------------------------------------------------------------
 
         /// <summary>
@@ -918,44 +1227,69 @@ namespace OsziWaveformAnalyzer
 
         // --------------------------------------------------------------------------
 
-        public static String RegReadString(eRegKey e_Key, String s_Default = "")
+        /// <summary>
+        /// On Linux this is redirected to /.mono/registry/currentUser/values.xml
+        /// </summary>
+        public static String RegReadString(eRegKey e_Key, String s_Default = "", eOsziSerie e_Oszi = eOsziSerie.Invalid)
         {
-            Object o_Value = Registry.GetValue(REGISTRY_PATH, e_Key.ToString(), null);
+            Object o_Value = Registry.GetValue(GetRegPath(e_Key, e_Oszi), e_Key.ToString(), null);
             if (o_Value is String) return (String)o_Value;
             else                   return s_Default;
         }
 
-        public static void RegWriteString(eRegKey e_Key, String s_Value)
+        public static void RegWriteString(eRegKey e_Key, String s_Value, eOsziSerie e_Oszi = eOsziSerie.Invalid)
         {
-            Registry.SetValue(REGISTRY_PATH, e_Key.ToString(), s_Value);
+            Registry.SetValue(GetRegPath(e_Key, e_Oszi), e_Key.ToString(), s_Value);
         }
 
         // ---------------------
 
-        public static bool RegReadBool(eRegKey e_Key, bool b_Default = false)
+        /// <summary>
+        /// On Linux this is redirected to /.mono/registry/currentUser/values.xml
+        /// </summary>
+        public static bool RegReadBool(eRegKey e_Key, bool b_Default = false, eOsziSerie e_Oszi = eOsziSerie.Invalid)
         {
-            Object o_Value = Registry.GetValue(REGISTRY_PATH, e_Key.ToString(), null);
+            Object o_Value = Registry.GetValue(GetRegPath(e_Key, e_Oszi), e_Key.ToString(), null);
             if (o_Value is int) return (int)o_Value == 1;
             else                return b_Default;
         }
 
-        public static void RegWriteBool(eRegKey e_Key, bool b_Value)
+        public static void RegWriteBool(eRegKey e_Key, bool b_Value, eOsziSerie e_Oszi = eOsziSerie.Invalid)
         {
-            Registry.SetValue(REGISTRY_PATH, e_Key.ToString(), b_Value ? 1 : 0);
+            Registry.SetValue(GetRegPath(e_Key, e_Oszi), e_Key.ToString(), b_Value ? 1 : 0);
         }
 
         // ---------------------
 
-        public static int RegReadInteger(eRegKey e_Key, int s32_Default = 0)
+        /// <summary>
+        /// On Linux this is redirected to /.mono/registry/currentUser/values.xml
+        /// </summary>
+        public static int RegReadInteger(eRegKey e_Key, int s32_Default = 0, eOsziSerie e_Oszi = eOsziSerie.Invalid)
         {
-            Object o_Value = Registry.GetValue(REGISTRY_PATH, e_Key.ToString(), null);
+            Object o_Value = Registry.GetValue(GetRegPath(e_Key, e_Oszi), e_Key.ToString(), null);
             if (o_Value is int) return (int)o_Value;
             else                return s32_Default;
         }
 
-        public static void RegWriteInteger(eRegKey e_Key, int s32_Value)
+        public static void RegWriteInteger(eRegKey e_Key, int s32_Value, eOsziSerie e_Oszi = eOsziSerie.Invalid)
         {
-            Registry.SetValue(REGISTRY_PATH, e_Key.ToString(), s32_Value);
+            Registry.SetValue(GetRegPath(e_Key, e_Oszi), e_Key.ToString(), s32_Value);
+        }
+
+        // ---------------------
+
+        private static String GetRegPath(eRegKey e_Key, eOsziSerie e_Oszi)
+        {
+            if (e_Oszi == eOsziSerie.Invalid)
+            {
+                Debug.Assert((int)e_Key < 1000, "Registry key is Oszi specific.");
+                return REGISTRY_PATH;
+            }
+            else
+            {
+                Debug.Assert((int)e_Key >= 1000, "Registry key is not Oszi specific.");
+                return REGISTRY_PATH + "\\" + e_Oszi;
+            }
         }
 
         // ---------------------
@@ -1020,6 +1354,38 @@ namespace OsziWaveformAnalyzer
             return r_Rect;
 		}
 
+        /// <summary>
+        /// Calculate distance of raster lines in coordinate system.
+        /// returns intervals of  0.1, 0.2, 0.5,  1, 2, 5,  10, 20, 50,  etc...
+        /// s32_MaxIntervals defines the maximum intervals that will be returned.
+        /// This value must be derived from the window size and the width of a label for the horizontal axis.
+        /// The smaller the window the less labels fit horizontally without overlapping each other. 
+        /// </summary>
+        public static double CalcRasterInterval(double d_Range, int s32_MaxIntervals)
+        {
+            if (s32_MaxIntervals < 2)
+            {
+                Debug.Assert(false, "Wrong parameter s32_MaxIntervals");
+                s32_MaxIntervals = 2;
+            }
+
+            // Determine the minimum interval size needed to stay under s32_MaxIntervals
+            double d_RoughInterval = d_Range / s32_MaxIntervals;
+
+            // d_Factor =  1 for d_RoughInterval between  1 and  9
+            // d_Factor = 10 for d_RoughInterval between 10 and 90
+            // etc...
+            double d_Factor = Math.Pow(10.0, Math.Floor(Math.Log10(d_RoughInterval)));
+
+            // Find the smallest nice step (1, 2, 5) that is >= d_RoughInterval
+            double d_Normalized = d_RoughInterval / d_Factor;
+    
+            if (d_Normalized <= 1.0) return d_Factor;
+            if (d_Normalized <= 2.0) return d_Factor * 2.0;
+            if (d_Normalized <= 5.0) return d_Factor * 5.0;
+            return 10.0 * d_Factor;
+        }
+
         // -----------------------------------------------------
 
         /// <summary>
@@ -1082,7 +1448,7 @@ namespace OsziWaveformAnalyzer
             if (s_NewName != null)
                 i_Names.Add(s_NewName);
 
-            foreach (Channel i_Channel in OsziPanel.CurCapture.mi_Channels)
+            foreach (Channel i_Channel in mi_Capture.mi_Channels)
             {
                 if (i_Names.Contains(i_Channel.ms_Name))
                 {
@@ -1100,13 +1466,13 @@ namespace OsziWaveformAnalyzer
         /// </summary>
         public static bool CheckMinSamples()
         {
-            if (OsziPanel.CurCapture == null || OsziPanel.CurCapture.ms32_Samples == 0)
+            if (mi_Capture == null || mi_Capture.ms32_Samples == 0)
             {
                 MessageBox.Show(mi_Main, NO_SAMPLES_LOADED, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
 
-            if (OsziPanel.CurCapture.ms32_Samples < MIN_VALID_SAMPLES)
+            if (mi_Capture.ms32_Samples < MIN_VALID_SAMPLES)
             {
                 MessageBox.Show(mi_Main, ERR_MIN_SAMPLES, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
@@ -1186,5 +1552,51 @@ namespace OsziWaveformAnalyzer
         {
             Debug.Assert(File.Exists(Path.Combine(SampleDir, s_Filename)), "Demo file missing: " + s_Filename);
         }
+
+        // ================================= Debug Stuff ===========================================
+
+        #if DEBUG
+
+        private static String ms_SpeedMessage;
+
+        /// <summary>
+        /// This allows to measure how long functions need for execution:
+        /// Utils.StartMeasureSpeed("LoadBitmap()");
+        /// LoadBitmap();
+        /// Utils.StartMeasureSpeed("Render()");
+        /// Render();
+        /// Utils.StopMeasureSpeed();
+        /// 
+        /// ATTENTION:
+        /// A function will always execute slower the very first time that it is called.
+        /// This is because it must be compiled by the JIT compiler.
+        /// </summary>
+        public static void StartMeasureSpeed(String s_Messg)
+        {
+            if (mi_MeasureSpeed.IsRunning)
+                StopMeasureSpeed();
+
+            ms_SpeedMessage = s_Messg.PadRight(25);
+            mi_MeasureSpeed.Restart(); 
+        }
+
+        /// <summary>
+        /// Display elapsed time in milli and micro seconds
+        /// It is allowed to call StartMeasureSpeed() again instead of StopMeasureSpeed() to measure another speed.
+        /// </summary>
+        public static void StopMeasureSpeed()
+        {
+            if (!mi_MeasureSpeed.IsRunning)
+            {
+                Debug.Print("Wrong usage of StopMeasureSpeed()");
+                return;
+            }
+
+            mi_MeasureSpeed.Stop();
+            Int64 s64_Micro = mi_MeasureSpeed.ElapsedTicks * 1000000 / Stopwatch.Frequency;
+            Debug.Print("{0} took {1,5}.{2:D3} ms", ms_SpeedMessage, s64_Micro / 1000, s64_Micro % 1000);
+        }
+
+        #endif
     }
 }

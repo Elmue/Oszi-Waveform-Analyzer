@@ -52,7 +52,9 @@ using SmplMark          = OsziWaveformAnalyzer.Utils.SmplMark;
 using eMark             = OsziWaveformAnalyzer.Utils.eMark;
 using GraphMenuItem     = Operations.OperationManager.GraphMenuItem;
 using Utils             = OsziWaveformAnalyzer.Utils;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
+using Range             = OsziWaveformAnalyzer.Utils.Range;
+using eTab              = OsziWaveformAnalyzer.FormMain.eTab;
 
 namespace Operations
 {
@@ -67,22 +69,40 @@ namespace Operations
         public void GetMenuItems(Channel i_Channel, bool b_Analog, List<GraphMenuItem> i_Items)
         {
             GraphMenuItem i_Before = new GraphMenuItem();
-            i_Before.ms_MenuText   = "Delete all samples before the mouse position";
+            i_Before.ms_MenuText   = "Select between first sample and mouse position";
             i_Before.ms_ImageFile  = "ArrowLeft.ico";
-            i_Before.mo_Tag        = "Before";
+            i_Before.mo_Tag        = "SelectBefore";
             i_Items.Add(i_Before);
 
             GraphMenuItem i_After  = new GraphMenuItem();
-            i_After.ms_MenuText    = "Delete all samples after the mouse position";
+            i_After.ms_MenuText    = "Select between mouse position and last sample";
             i_After.ms_ImageFile   = "ArrowRight.ico";
-            i_After.mo_Tag         = "After";
+            i_After.mo_Tag         = "SelectAfter";
             i_Items.Add(i_After);
             
             GraphMenuItem i_Between = new GraphMenuItem();
-            i_Between.ms_MenuText   = "Delete all samples between the cursor and the mouse position";
-            i_Between.ms_ImageFile  = "ArrowLeftRight.ico";
-            i_Between.mo_Tag        = "Between";
+            i_Between.ms_MenuText   = "Select between cursor and mouse position";
+            i_Between.ms_ImageFile  = "ArrowMid.ico";
+            i_Between.mo_Tag        = "SelectBetween";
             i_Items.Add(i_Between);
+
+            /*
+            // Select All is not required. Not selecting any samples does the same as Select All.
+            GraphMenuItem i_All = new GraphMenuItem();
+            i_All.ms_MenuText   = "Select all samples";
+            i_All.ms_ImageFile  = "ArrowLeftRight.ico";
+            i_All.mo_Tag        = "SelectAll";
+            i_Items.Add(i_All);
+            */ 
+
+            if (Utils.PanelOszi.UserSelection.IsValid)
+            {
+                GraphMenuItem i_Delete = new GraphMenuItem();
+                i_Delete.ms_MenuText   = "Delete selected samples";
+                i_Delete.ms_ImageFile  = "Delete.ico";
+                i_Delete.mo_Tag        = "Delete";
+                i_Items.Add(i_Delete);
+            }
         }
 
         /// <summary>
@@ -90,117 +110,105 @@ namespace Operations
         /// </summary>
         public String Execute(Channel i_ClickChannel, int s32_Sample, bool b_Analog, Object o_Tag)
         {
-            Capture i_Capt = OsziPanel.CurCapture;
-            int s32_Delete;
+            Capture i_Capt = Utils.CurCapture;
+            int s32_CursorSpl = Utils.PanelOszi.CursorSample;
 
-            if ((String)o_Tag == "Between")
+            switch ((String)o_Tag)
             {
-                int s32_CursorSpl = Utils.OsziPanel.CursorSample;
-                if (s32_CursorSpl < 0)
-                    throw new Exception("You must set the cursor to the start sample, then right-click on the end sample to delete the range between.");
+                case "SelectBefore":
+                    Utils.PanelOszi.UserSelection = new Range(0, s32_Sample);
+                    Utils.PanelOszi.Invalidate();
+                    return "Samples selected.";
 
-                int s32_Before = Math.Min(s32_Sample, s32_CursorSpl);
-                int s32_After  = Math.Max(s32_Sample, s32_CursorSpl);
-                int s32_End    = i_Capt.ms32_Samples - s32_After;
+                case "SelectAfter":
+                    Utils.PanelOszi.UserSelection = new Range(s32_Sample, i_Capt.ms32_Samples);
+                    Utils.PanelOszi.Invalidate();
+                    return "Samples selected.";
 
-                s32_Delete = s32_After - s32_Before;
-                i_Capt.ms32_Samples -= s32_Delete;
+                case "SelectBetween":
+                    if (s32_CursorSpl < 0)
+                        throw new Exception("You must first set the cursor.");
+                    int s32_Start = Math.Min(s32_Sample, s32_CursorSpl);
+                    int s32_End   = Math.Max(s32_Sample, s32_CursorSpl);
+                    Utils.PanelOszi.UserSelection = new Range(s32_Start, s32_End);
+                    Utils.PanelOszi.Invalidate();
+                    return "Samples selected.";
 
-                foreach (Channel i_Channel in i_Capt.mi_Channels)
-                {
-                    if (i_Channel.mf_Analog != null)
-                    {
-                        float[] f_NewAnalog = new float[i_Capt.ms32_Samples];
-                        Array.Copy(i_Channel.mf_Analog, 0,         f_NewAnalog, 0,          s32_Before);
-                        Array.Copy(i_Channel.mf_Analog, s32_After, f_NewAnalog, s32_Before, s32_End);
-                        i_Channel.mf_Analog = f_NewAnalog;
-                    }
-
-                    if (i_Channel.mu8_Digital != null)
-                    {
-                        Byte[] u8_NewDigital = new Byte[i_Capt.ms32_Samples];
-                        Array.Copy(i_Channel.mu8_Digital, 0,         u8_NewDigital, 0,          s32_Before);
-                        Array.Copy(i_Channel.mu8_Digital, s32_After, u8_NewDigital, s32_Before, s32_End);
-                        i_Channel.mu8_Digital = u8_NewDigital;
-                    }
-
-                    // Must be calculated anew
-                    i_Channel.mi_MarkRows  = null;
-                    i_Channel.mb_Threshold = false;
-                }
-
-                // Delete and adjust separators
-                List<int> i_SepList = new List<int>();
-                foreach (int s32_Sep in i_Capt.ms32_Separators)
-                {
-                    if (s32_Sep < s32_Before)
-                        i_SepList.Add(s32_Sep); // copy unchanged
-
-                    if (s32_Sep > s32_After)
-                        i_SepList.Add(s32_Sep - s32_Delete); // move left
-                }
-                i_Capt.ms32_Separators = i_SepList.ToArray();
+                case "SelectAll":
+                    Utils.PanelOszi.UserSelection = new Range(0, i_Capt.ms32_Samples);
+                    Utils.PanelOszi.Invalidate();
+                    return "Samples selected.";
             }
-            else // Before / After
+
+            // ---------- Delete operation ----------
+
+            Range k_Sel = Utils.PanelOszi.UserSelection;
+            if (!k_Sel.IsValid)
+                throw new Exception("You must first select the samples to delete.");
+
+            int s32_Before = k_Sel.ms32_Start;
+            int s32_After  = k_Sel.ms32_End;
+            int s32_Count  = i_Capt.ms32_Samples - s32_After;
+
+            int s32_Deleted = s32_After - s32_Before;
+            i_Capt.ms32_Samples -= s32_Deleted;
+
+            if (i_Capt.ms32_Samples < Utils.MIN_VALID_SAMPLES)
             {
-                int s32_Begin = 0;
-                int s32_End   = 0;
-                switch ((String)o_Tag)
-                {
-                    case "Before": s32_Begin = s32_Sample; break;
-                    case "After":  s32_End   = i_Capt.ms32_Samples - s32_Sample; break;
-                    default: throw new ArgumentException();
-                }
-
-                // Either Begin or End is zero here.
-                s32_Delete = s32_Begin + s32_End;
-                i_Capt.ms32_Samples -= s32_Delete;
-
-                foreach (Channel i_Channel in i_Capt.mi_Channels)
-                {
-                    if (i_Channel.mf_Analog != null)
-                    {
-                        float[] f_NewAnalog = new float[i_Capt.ms32_Samples];
-                        Array.Copy(i_Channel.mf_Analog, s32_Begin, f_NewAnalog, 0, i_Capt.ms32_Samples);
-                        i_Channel.mf_Analog = f_NewAnalog;
-                    }
-
-                    if (i_Channel.mu8_Digital != null)
-                    {
-                        Byte[] u8_NewDigital = new Byte[i_Capt.ms32_Samples];
-                        Array.Copy(i_Channel.mu8_Digital, s32_Begin, u8_NewDigital, 0, i_Capt.ms32_Samples);
-                        i_Channel.mu8_Digital = u8_NewDigital;
-                    }
-
-                    // Must be calculated anew
-                    i_Channel.mi_MarkRows  = null;
-                    i_Channel.mb_Threshold = false;
-                }
-
-                // Delete and adjust separators
-                List<int> i_SepList = new List<int>();
-                foreach (int s32_Sep in i_Capt.ms32_Separators)
-                {
-                    if (s32_Begin > 0 && s32_Sep > s32_Sample)
-                        i_SepList.Add(s32_Sep - s32_Delete); // move left
-
-                    if (s32_End > 0 && s32_Sep < s32_Sample)
-                        i_SepList.Add(s32_Sep); // copy
-                }
-                i_Capt.ms32_Separators = i_SepList.ToArray();
+                // Set Utils.CurCapture = null --> show black screen. eTab.Invalid -> no tab change
+                Utils.PanelOszi.OnUserAction(eTab.Invalid, null);
+                Utils.FormMain.ResetInputFile(); 
+                return "All samples deleted. The minimum sample count is " + Utils.MIN_VALID_SAMPLES;
             }
+
+            foreach (Channel i_Channel in i_Capt.mi_Channels)
+            {
+                if (i_Channel.mf_Analog != null)
+                {
+                    float[] f_NewAnalog = new float[i_Capt.ms32_Samples];
+                    Array.Copy(i_Channel.mf_Analog, 0,         f_NewAnalog, 0,          s32_Before);
+                    Array.Copy(i_Channel.mf_Analog, s32_After, f_NewAnalog, s32_Before, s32_Count);
+                    i_Channel.mf_Analog = f_NewAnalog;
+                }
+
+                if (i_Channel.mu8_Digital != null)
+                {
+                    Byte[] u8_NewDigital = new Byte[i_Capt.ms32_Samples];
+                    Array.Copy(i_Channel.mu8_Digital, 0,         u8_NewDigital, 0,          s32_Before);
+                    Array.Copy(i_Channel.mu8_Digital, s32_After, u8_NewDigital, s32_Before, s32_Count);
+                    i_Channel.mu8_Digital = u8_NewDigital;
+                }
+
+                // Must be calculated anew
+                i_Channel.mi_MarkRows  = null;
+                i_Channel.mb_Threshold = false;
+            }
+
+            // Delete and adjust separators
+            List<int> i_SepList = new List<int>();
+            foreach (int s32_Sep in i_Capt.ms32_Separators)
+            {
+                if (s32_Sep < s32_Before)
+                    i_SepList.Add(s32_Sep); // copy unchanged
+
+                if (s32_Sep > s32_After)
+                    i_SepList.Add(s32_Sep - s32_Deleted); // move left
+            }
+            i_Capt.ms32_Separators = i_SepList.ToArray();
 
             // force recalculation of all Min/Max values of all channels
             i_Capt.ResetSampleMinMax(); 
 
             // Remove cursor if behind the waveform
-            if (Utils.OsziPanel.CursorSample >= i_Capt.ms32_Samples)
-                Utils.OsziPanel.SetCursor(-1, -1m); 
+            if (Utils.PanelOszi.CursorSample >= i_Capt.ms32_Samples)
+                Utils.PanelOszi.SetCursor(-1, -1m); 
 
-            OsziPanel.CurCapture.mb_Dirty = true; // user has unsaved changes
-            Utils.OsziPanel.RecalculateEverything();
+            Utils.PanelOszi.UserSelection = new Range(0, 0);
 
-            return s32_Delete + " samples deleted";
+            Utils.CurCapture.mb_Dirty = true; // user has unsaved changes
+            Utils.PanelOszi.RecalculateEverything();
+
+            return s32_Deleted + " samples deleted";
         }
     }
 }

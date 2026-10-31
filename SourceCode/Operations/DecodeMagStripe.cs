@@ -52,9 +52,10 @@ using SmplMark          = OsziWaveformAnalyzer.Utils.SmplMark;
 using eMark             = OsziWaveformAnalyzer.Utils.eMark;
 using GraphMenuItem     = Operations.OperationManager.GraphMenuItem;
 using Utils             = OsziWaveformAnalyzer.Utils;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 using RtfDocument       = OsziWaveformAnalyzer.RtfDocument;
 using RtfBuilder        = OsziWaveformAnalyzer.RtfBuilder;
+using Range             = OsziWaveformAnalyzer.Utils.Range;
 
 namespace Operations
 {
@@ -104,13 +105,15 @@ namespace Operations
         /// </summary>
         public String Execute(Channel i_ClickChannel, int s32_Sample, bool b_Analog, Object o_Tag)
         {
-            if (OsziPanel.CurCapture.ms32_AnalogCount > 1)
-                Utils.OsziPanel.SeparateChannels = true;
+            if (Utils.CurCapture.ms32_AnalogCount > 1)
+                Utils.PanelOszi.SeparateChannels = true;
+
+            Range k_Full = Utils.PanelOszi.FullRange;
 
             int s32_SmplPerBit = 0;
-            foreach (Channel i_Channel in OsziPanel.CurCapture.mi_Channels)
+            foreach (Channel i_Channel in Utils.CurCapture.mi_Channels)
             {
-                Digitizer.DigitizeAdaptive(i_Channel, 0.25f);
+                Digitizer.DigitizeAdaptive(i_Channel, k_Full, 0.25f);
                 if (!DecodeSelfSyncData(i_Channel, ref s32_SmplPerBit))
                 {
                     // Track 1 and 3 contain a clean sine wave, which can be digitized with adaptive mode.
@@ -119,7 +122,7 @@ namespace Operations
                     if (i_Channel.mf_Analog != null)
                         i_Channel.mu8_Digital = null;
 
-                    Digitizer.DigitizeAtMinMax(i_Channel, 0.05f);
+                    Digitizer.DigitizeAtMinMax(i_Channel, k_Full, 0.05f);
                     DecodeSelfSyncData(i_Channel, ref s32_SmplPerBit);
                 }
             }
@@ -259,9 +262,9 @@ namespace Operations
             RtfBuilder i_Builder = i_RtfDoc.CreateNewBuilder();
 
             int s32_Success = 0;
-            for (int C=0; C<OsziPanel.CurCapture.mi_Channels.Count; C++)
+            for (int C=0; C<Utils.CurCapture.mi_Channels.Count; C++)
             {
-                Channel i_Channel = OsziPanel.CurCapture.mi_Channels[C];
+                Channel i_Channel = Utils.CurCapture.mi_Channels[C];
                 if (i_Channel.mi_MarkRows == null)
                     continue;
 
@@ -284,7 +287,7 @@ namespace Operations
 
                     if (s_Track != null)
                     {
-                        Color c_Color = OsziPanel.GetChannelColor(i_Channel);
+                        Color c_Color = PanelOszi.GetChannelColor(i_Channel);
                         i_Builder.AppendLine(c_Color, i_Channel + ":", FontStyle.Underline);
 
                         int s32_DataBits = (s_Track.Length + 1) * (s32_Bits + 1);
@@ -300,12 +303,9 @@ namespace Operations
                     }
                 }
             }
-
-            // This must be called also in case if nothing was detected to show any added digital channels.
-            Utils.OsziPanel.RecalculateEverything();
-
+           
             // Show RTF, if created and switch to tab "Decoder"
-            Utils.FormMain.ShowAnalysisResult(i_RtfDoc, s32_SmplPerBit); 
+            Utils.FormMain.ShowAnalysisResult(i_RtfDoc, s32_SmplPerBit, "Magnetic Stripe Decoder Result"); 
 
             if (i_Builder.IsEmpty)
                 return "Error: Nothing detected.";
@@ -405,7 +405,7 @@ namespace Operations
                 }
             }
 
-            Debug.Print(String.Format("Discard {0}, {1} bits, {2}: '{3}'", i_Channel, s32_Bits, b_Reverse ? "Reverse" : "Normal ", i_TrackTxt));
+            Debug.Print("Discard {0}, {1} bits, {2}: '{3}'", i_Channel, s32_Bits, b_Reverse ? "Reverse" : "Normal ", i_TrackTxt);
             return null; // failure
         }
     }

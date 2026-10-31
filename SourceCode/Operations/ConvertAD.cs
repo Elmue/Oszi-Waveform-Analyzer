@@ -50,8 +50,9 @@ using Channel           = OsziWaveformAnalyzer.Utils.Channel;
 using eRegKey           = OsziWaveformAnalyzer.Utils.eRegKey;
 using GraphMenuItem     = Operations.OperationManager.GraphMenuItem;
 using Utils             = OsziWaveformAnalyzer.Utils;
-using OsziPanel         = OsziWaveformAnalyzer.OsziPanel;
+using PanelOszi         = OsziWaveformAnalyzer.PanelOszi;
 using PlatformManager   = Platform.PlatformManager;
+using Range             = OsziWaveformAnalyzer.Utils.Range;
 
 namespace Operations
 {
@@ -74,7 +75,7 @@ namespace Operations
 
             // When checkbox "Separate Analog Channels" is off all analog channels are drawn on top of each other.
             // When right-clicking it is impossible to know which channel the user wants to convert.
-            if (b_Analog && Utils.OsziPanel.CommonAnalogDrawing)
+            if (b_Analog && Utils.PanelOszi.CommonAnalogDrawing)
                 return; 
 
             GraphMenuItem i_Item = new GraphMenuItem();
@@ -104,10 +105,10 @@ namespace Operations
             comboMethod.Items.Add(METHOD_MIN_MAX);
 
             radioOneChannel.Text = "Convert analog channel  " + mi_Analog.ms_Name;
-            radioOneChannel.ForeColor = OsziPanel.GetChannelColor(mi_Analog);
+            radioOneChannel.ForeColor = PanelOszi.GetChannelColor(mi_Analog);
             textNewName.Text = Utils.RegReadString(eRegKey.AD_Result, "Math Result");
 
-            // ALWAYS start with Threashold A/D
+            // ALWAYS start with Threshold A/D
             // The other methods are very special and must be selected each time explicitely by the user.
             comboMethod.SelectedIndex = 0;
 
@@ -175,9 +176,9 @@ namespace Operations
 
         void SetThresholds()
         {
-            bool b_Multi = radioAllChannels.Checked && OsziPanel.CurCapture.ms32_AnalogCount > 1;
+            bool b_Multi = radioAllChannels.Checked && Utils.CurCapture.ms32_AnalogCount > 1;
 
-            OsziPanel.CurCapture.ClearThresholds(); // remove threshold lines from all channels
+            Utils.CurCapture.ClearThresholds(); // remove threshold lines from all channels
 
             if (comboMethod.Text == METHOD_ADAPTIVE)
             {
@@ -208,7 +209,7 @@ namespace Operations
                 lblThresholdHigh.Text = s_ThreshHigh;
                 trackBarThreshLow.Visible = true;
 
-                foreach (Channel i_Channel in OsziPanel.CurCapture.mi_Channels)
+                foreach (Channel i_Channel in Utils.CurCapture.mi_Channels)
                 {
                     if (b_Multi || i_Channel == mi_Analog)
                     {
@@ -219,7 +220,7 @@ namespace Operations
                     }
                 }
             }
-            Utils.OsziPanel.Invalidate();
+            Utils.PanelOszi.Invalidate();
         }
 
         private void btnConvertClose_Click(object sender, EventArgs e)
@@ -247,12 +248,14 @@ namespace Operations
                     textNewName.Focus();
                     return;
                 }
-                i_Digi = OsziPanel.CurCapture.FindOrCreateChannel(textNewName.Text, mi_Analog);
+                i_Digi = Utils.CurCapture.FindOrCreateChannel(textNewName.Text, mi_Analog);
             }
 
-            bool b_Multi = radioAllChannels.Checked && OsziPanel.CurCapture.ms32_AnalogCount > 1;
+            bool b_Multi = radioAllChannels.Checked && Utils.CurCapture.ms32_AnalogCount > 1;
 
-            foreach (Channel i_Channel in OsziPanel.CurCapture.mi_Channels)
+            Range k_Sel = Utils.PanelOszi.UserSelectionOrAll;
+
+            foreach (Channel i_Channel in Utils.CurCapture.mi_Channels)
             {
                 if (b_Multi)
                 {
@@ -262,9 +265,9 @@ namespace Operations
 
                 switch (comboMethod.Text)
                 {
-                    case METHOD_THRESHOLD: Digitizer.ThresholdAD(i_Anal, i_Digi); break;
-                    case METHOD_ADAPTIVE:  Digitizer.AdaptiveAD (i_Anal, i_Digi,  mf_AdaptiveMinPct); break;
-                    case METHOD_MIN_MAX:   Digitizer.MinMaxAD   (i_Anal, i_Digi); break;
+                    case METHOD_THRESHOLD: Digitizer.ThresholdAD(i_Anal, i_Digi, k_Sel); break;
+                    case METHOD_ADAPTIVE:  Digitizer.AdaptiveAD (i_Anal, i_Digi, k_Sel,  mf_AdaptiveMinPct); break;
+                    case METHOD_MIN_MAX:   Digitizer.MinMaxAD   (i_Anal, i_Digi, k_Sel); break;
                     default:
                         Debug.Assert(false, "Programming Error: Invalid ComboBox items");
                         return;
@@ -276,8 +279,8 @@ namespace Operations
                     break;
             }
 
-            OsziPanel.CurCapture.mb_Dirty = true; // user has unsaved changes
-            Utils.OsziPanel.RecalculateEverything();
+            Utils.CurCapture.mb_Dirty = true; // user has unsaved changes
+            Utils.PanelOszi.RecalculateEverything();
 
             if (b_Close)
                 DialogResult = DialogResult.OK;

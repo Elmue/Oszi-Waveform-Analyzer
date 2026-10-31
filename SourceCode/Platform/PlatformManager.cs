@@ -44,11 +44,15 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Windows.Forms;
 
-using RtfViewer         = OsziWaveformAnalyzer.RtfViewer;
+using PanelRtf          = OsziWaveformAnalyzer.PanelRtf;
 using ScpiCombo         = Transfer.SCPI.ScpiCombo;
 
 namespace Platform
 {
+    /// <summary>
+    /// On Mono you must install:
+    /// sudo apt install libgdiplus
+    /// </summary>
     public class PlatformManager
     {
         #region enums
@@ -61,16 +65,51 @@ namespace Platform
 
         #endregion
 
-        #region interfaces IPlatform + IDevice
+        #region interface IUsbDevice
+
+        public interface IUsbDevice : IDisposable
+        {
+            // Send a TMC packet to the oscilloscope
+            void Send(Byte[] u8_Packet, int s32_Timeout);
+
+            // Receive a TMC packet from the oscilloscope and return the bytes that have been written into the buffer
+            int Receive(Byte[] u8_RxBuffer, int s32_Timeout);
+
+            // Abort pending Tx and Rx
+            void CancelTransfer();
+        }
+
+        #endregion
+
+        #region interface IAudioInDevice
+
+        /// <summary>
+        /// Callback for recorded audio data from the soundcard.
+        /// returns a float[ChannelCount][SampleCount]
+        /// This callback must be called every 100 ms for the VU meter to work correctly.
+        /// </summary>
+        public delegate void AudioDataCallback(float[][] f_Data);
+
+        public interface IAudioInDevice : IDisposable
+        {
+            // Start capturing live input from an audio device.
+            // AudioDataCallback will be called every 100 ms with the captured data until StopRecording() is called.
+            // Data is captured as 8, 16 or 24 bit and passed as float[] to the callback.
+            void StartRecording(int s32_Samplerate, int s32_Channels, int s32_Bits, AudioDataCallback f_Callback);
+
+            // Stop live audio capture
+            void StopRecording();
+
+            // Get the display name for the ComboBox
+            String ToString();
+        }
+
+        #endregion
+
+        #region interface IPlatform
 
         public interface IPlatform
         {
-            // Adapt RichTextBox to use the new MsftEdit.dll
-            void RtfBoxCreateParams(CreateParams i_Params);
-
-            // Adapt .NET framework to support clickable RTF links in RichTextBox
-            void RtfBoxWndProc(RtfViewer iRtfViewer, ref Message k_Msg);
-
             // Open the default browser and jump to the chapter in the file Manual.htm
             void ShowHelp(Form i_Owner, String s_Chapter = "");
 
@@ -87,27 +126,33 @@ namespace Platform
             // This function is called from the button "Install Driver" that should exist in all the Capture Forms.
             void InstallDriver(Form i_Owner);
 
+            // Prevent that the operating system goes into sleep mode
+            void PreventSleep();
+
+            // ------------------------------
+
+            // Adapt RichTextBox to use the new MsftEdit.dll
+            void RtfBoxCreateParams(CreateParams i_Params);
+
+            // Adapt .NET framework to support clickable RTF links in RichTextBox
+            void RtfBoxWndProc(PanelRtf i_PanelRtf, ref Message k_Msg);
+
+            // ------------------------------
+
             // Load the combobox with all SCPI devices connected over USB
             // The ComboBox Items must be ScpiCombo classes.
             void EnumerateUsbDevices(ComboBox i_ComboUsbDevice);
 
             // Create a new instance of the class that is derived from IDevice and open the device
-            IDevice OpenUsbDevice(ScpiCombo i_Combo);
+            IUsbDevice OpenUsbDevice(ScpiCombo i_Combo);
 
-            // Prevent that the operating system goes into sleep mode
-            void PreventSleep();
-        }
+            // Load the combobox with all RS232 ports
+            void EnumerateRs232Ports(ComboBox i_ComboRS232);
 
-        public interface IDevice : IDisposable
-        {
-            // Send a TMC packet to the oscilloscope
-            void Send(Byte[] u8_Packet, int s32_Timeout);
+            // ------------------------------
 
-            // Receive a TMC packet from the oscilloscope and return the bytes that have been written into the buffer
-            int Receive(Byte[] u8_RxBuffer, int s32_Timeout);
-
-            // Abort pending Tx and Rx
-            void CancelTransfer();
+            // Enumerate all devices that can be used for live audio input capture
+            List<IAudioInDevice> EnumerateAudioInputDevices();
         }
 
         #endregion
