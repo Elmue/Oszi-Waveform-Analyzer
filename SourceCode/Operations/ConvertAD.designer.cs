@@ -46,6 +46,7 @@
             this.radioAllChannels = new System.Windows.Forms.RadioButton();
             this.radioOneChannel = new System.Windows.Forms.RadioButton();
             this.linkHelp = new System.Windows.Forms.LinkLabel();
+            this.lblApply = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.trackBarThreshLow)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.trackBarThresHigh)).BeginInit();
             this.panel1.SuspendLayout();
@@ -189,6 +190,7 @@
             // 
             // panel1
             // 
+            this.panel1.Controls.Add(this.lblApply);
             this.panel1.Controls.Add(this.radioAllChannels);
             this.panel1.Controls.Add(this.radioOneChannel);
             this.panel1.Location = new System.Drawing.Point(12, 4);
@@ -230,6 +232,16 @@
             this.linkHelp.TabStop = true;
             this.linkHelp.Text = "Show Help";
             this.linkHelp.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkHelp_LinkClicked);
+            // 
+            // lblApply
+            // 
+            this.lblApply.AutoSize = true;
+            this.lblApply.ForeColor = System.Drawing.Color.White;
+            this.lblApply.Location = new System.Drawing.Point(257, 17);
+            this.lblApply.Name = "lblApply";
+            this.lblApply.Size = new System.Drawing.Size(48, 13);
+            this.lblApply.TabIndex = 118;
+            this.lblApply.Text = "Apply to:";
             // 
             // ConvertAD
             // 
@@ -289,5 +301,6 @@
         private System.Windows.Forms.RadioButton radioAllChannels;
         private System.Windows.Forms.RadioButton radioOneChannel;
         private System.Windows.Forms.LinkLabel linkHelp;
+        private System.Windows.Forms.Label lblApply;
     }
 }

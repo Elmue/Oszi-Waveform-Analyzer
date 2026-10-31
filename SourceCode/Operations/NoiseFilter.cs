@@ -59,6 +59,7 @@ namespace Operations
     {
         Channel mi_Channel;
         float[] mf_Original;
+        Range   mk_Selection;
 
         /// <summary>
         /// Implementation of interface IOperation
@@ -115,6 +116,10 @@ namespace Operations
             lblChannel.Text = "Channel:  " + mi_Channel;
             lblChannel.ForeColor = PanelOszi.GetChannelColor(mi_Channel);
 
+            String s_Display;
+            mk_Selection  = Utils.PanelOszi.GetUserSelectionOrAll(out s_Display);
+            lblApply.Text = "Apply to: " + s_Display;
+
             int s32_Supres = Utils.RegReadInteger(eRegKey.NoiseSuppress, 300); // 30 %
             int s32_Cycles = Utils.RegReadInteger(eRegKey.NoiseCycles, 6);
             trackSuppr .Value = Math.Max(trackSuppr .Minimum, Math.Min(trackSuppr .Maximum, s32_Supres));
@@ -150,7 +155,7 @@ namespace Operations
         {
             i_Form.Cursor = Cursors.WaitCursor;
 
-            Range k_Sel = Utils.PanelOszi.UserSelectionOrAll;
+            Range k_Sel = mk_Selection;
             if (b_VisibleOnly) 
             {
                 // If the user has slected a range --> apply the filter only on this range.

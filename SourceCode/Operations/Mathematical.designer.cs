@@ -48,11 +48,13 @@
             this.lblApplyTo = new System.Windows.Forms.Label();
             this.panelParam = new System.Windows.Forms.Panel();
             this.panelApply = new System.Windows.Forms.Panel();
+            this.radioApplyAll = new System.Windows.Forms.RadioButton();
+            this.radioApplyB = new System.Windows.Forms.RadioButton();
+            this.radioApplyA = new System.Windows.Forms.RadioButton();
             this.panelResult = new System.Windows.Forms.Panel();
             this.panelChannelB = new System.Windows.Forms.Panel();
-            this.radioApplyA = new System.Windows.Forms.RadioButton();
-            this.radioApplyB = new System.Windows.Forms.RadioButton();
-            this.radioApplyAll = new System.Windows.Forms.RadioButton();
+            this.lblApply = new System.Windows.Forms.Label();
+            this.label1 = new System.Windows.Forms.Label();
             this.panelParam.SuspendLayout();
             this.panelApply.SuspendLayout();
             this.panelResult.SuspendLayout();
@@ -63,7 +65,7 @@
             // 
             this.btnExecute.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.btnExecute.ForeColor = System.Drawing.Color.Black;
-            this.btnExecute.Location = new System.Drawing.Point(137, 207);
+            this.btnExecute.Location = new System.Drawing.Point(137, 224);
             this.btnExecute.Name = "btnExecute";
             this.btnExecute.Size = new System.Drawing.Size(66, 23);
             this.btnExecute.TabIndex = 51;
@@ -85,7 +87,7 @@
             // 
             this.lblChannelA.AutoSize = true;
             this.lblChannelA.ForeColor = System.Drawing.Color.White;
-            this.lblChannelA.Location = new System.Drawing.Point(13, 68);
+            this.lblChannelA.Location = new System.Drawing.Point(13, 87);
             this.lblChannelA.Name = "lblChannelA";
             this.lblChannelA.Size = new System.Drawing.Size(59, 13);
             this.lblChannelA.TabIndex = 7;
@@ -160,7 +162,7 @@
             // 
             this.btnExecuteClose.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.btnExecuteClose.ForeColor = System.Drawing.Color.Black;
-            this.btnExecuteClose.Location = new System.Drawing.Point(12, 207);
+            this.btnExecuteClose.Location = new System.Drawing.Point(12, 224);
             this.btnExecuteClose.Name = "btnExecuteClose";
             this.btnExecuteClose.Size = new System.Drawing.Size(116, 23);
             this.btnExecuteClose.TabIndex = 50;
@@ -173,7 +175,7 @@
             this.linkHelp.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.linkHelp.AutoSize = true;
             this.linkHelp.LinkColor = System.Drawing.Color.Lime;
-            this.linkHelp.Location = new System.Drawing.Point(211, 210);
+            this.linkHelp.Location = new System.Drawing.Point(211, 227);
             this.linkHelp.Name = "linkHelp";
             this.linkHelp.Size = new System.Drawing.Size(59, 13);
             this.linkHelp.TabIndex = 52;
@@ -212,7 +214,7 @@
             // 
             this.comboChannelA.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboChannelA.FormattingEnabled = true;
-            this.comboChannelA.Location = new System.Drawing.Point(103, 64);
+            this.comboChannelA.Location = new System.Drawing.Point(103, 83);
             this.comboChannelA.Name = "comboChannelA";
             this.comboChannelA.Size = new System.Drawing.Size(163, 21);
             this.comboChannelA.TabIndex = 41;
@@ -233,7 +235,7 @@
             this.panelParam.Controls.Add(this.lblParam);
             this.panelParam.Controls.Add(this.lblUnit);
             this.panelParam.Controls.Add(this.textParameter);
-            this.panelParam.Location = new System.Drawing.Point(4, 169);
+            this.panelParam.Location = new System.Drawing.Point(4, 188);
             this.panelParam.Name = "panelParam";
             this.panelParam.Size = new System.Drawing.Size(276, 28);
             this.panelParam.TabIndex = 122;
@@ -244,28 +246,30 @@
             this.panelApply.Controls.Add(this.radioApplyB);
             this.panelApply.Controls.Add(this.radioApplyA);
             this.panelApply.Controls.Add(this.lblApplyTo);
-            this.panelApply.Location = new System.Drawing.Point(4, 146);
+            this.panelApply.Location = new System.Drawing.Point(4, 165);
             this.panelApply.Name = "panelApply";
             this.panelApply.Size = new System.Drawing.Size(276, 24);
             this.panelApply.TabIndex = 123;
             // 
-            // panelResult
+            // radioApplyAll
             // 
-            this.panelResult.Controls.Add(this.textResult);
-            this.panelResult.Controls.Add(this.lblResult);
-            this.panelResult.Location = new System.Drawing.Point(4, 116);
-            this.panelResult.Name = "panelResult";
-            this.panelResult.Size = new System.Drawing.Size(276, 32);
-            this.panelResult.TabIndex = 124;
+            this.radioApplyAll.AutoSize = true;
+            this.radioApplyAll.Location = new System.Drawing.Point(228, 3);
+            this.radioApplyAll.Name = "radioApplyAll";
+            this.radioApplyAll.Size = new System.Drawing.Size(36, 17);
+            this.radioApplyAll.TabIndex = 122;
+            this.radioApplyAll.Text = "All";
+            this.radioApplyAll.UseVisualStyleBackColor = true;
             // 
-            // panelChannelB
+            // radioApplyB
             // 
-            this.panelChannelB.Controls.Add(this.comboChannelB);
-            this.panelChannelB.Controls.Add(this.lblChannelB);
-            this.panelChannelB.Location = new System.Drawing.Point(4, 87);
-            this.panelChannelB.Name = "panelChannelB";
-            this.panelChannelB.Size = new System.Drawing.Size(276, 30);
-            this.panelChannelB.TabIndex = 125;
+            this.radioApplyB.AutoSize = true;
+            this.radioApplyB.Location = new System.Drawing.Point(164, 3);
+            this.radioApplyB.Name = "radioApplyB";
+            this.radioApplyB.Size = new System.Drawing.Size(60, 17);
+            this.radioApplyB.TabIndex = 121;
+            this.radioApplyB.Text = "Chan B";
+            this.radioApplyB.UseVisualStyleBackColor = true;
             // 
             // radioApplyA
             // 
@@ -279,32 +283,51 @@
             this.radioApplyA.Text = "Chan A";
             this.radioApplyA.UseVisualStyleBackColor = true;
             // 
-            // radioApplyB
+            // panelResult
             // 
-            this.radioApplyB.AutoSize = true;
-            this.radioApplyB.Location = new System.Drawing.Point(164, 3);
-            this.radioApplyB.Name = "radioApplyB";
-            this.radioApplyB.Size = new System.Drawing.Size(60, 17);
-            this.radioApplyB.TabIndex = 121;
-            this.radioApplyB.Text = "Chan B";
-            this.radioApplyB.UseVisualStyleBackColor = true;
+            this.panelResult.Controls.Add(this.textResult);
+            this.panelResult.Controls.Add(this.lblResult);
+            this.panelResult.Location = new System.Drawing.Point(4, 135);
+            this.panelResult.Name = "panelResult";
+            this.panelResult.Size = new System.Drawing.Size(276, 32);
+            this.panelResult.TabIndex = 124;
             // 
-            // radioApplyAll
+            // panelChannelB
             // 
-            this.radioApplyAll.AutoSize = true;
-            this.radioApplyAll.Location = new System.Drawing.Point(228, 3);
-            this.radioApplyAll.Name = "radioApplyAll";
-            this.radioApplyAll.Size = new System.Drawing.Size(36, 17);
-            this.radioApplyAll.TabIndex = 122;
-            this.radioApplyAll.Text = "All";
-            this.radioApplyAll.UseVisualStyleBackColor = true;
+            this.panelChannelB.Controls.Add(this.comboChannelB);
+            this.panelChannelB.Controls.Add(this.lblChannelB);
+            this.panelChannelB.Location = new System.Drawing.Point(4, 106);
+            this.panelChannelB.Name = "panelChannelB";
+            this.panelChannelB.Size = new System.Drawing.Size(276, 30);
+            this.panelChannelB.TabIndex = 125;
+            // 
+            // lblApply
+            // 
+            this.lblApply.AutoSize = true;
+            this.lblApply.ForeColor = System.Drawing.Color.White;
+            this.lblApply.Location = new System.Drawing.Point(101, 60);
+            this.lblApply.Name = "lblApply";
+            this.lblApply.Size = new System.Drawing.Size(79, 13);
+            this.lblApply.TabIndex = 126;
+            this.lblApply.Text = "Samples X ... Y";
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(13, 60);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(52, 13);
+            this.label1.TabIndex = 127;
+            this.label1.Text = "Apply To:";
             // 
             // Mathematical
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.DimGray;
-            this.ClientSize = new System.Drawing.Size(283, 242);
+            this.ClientSize = new System.Drawing.Size(283, 259);
+            this.Controls.Add(this.label1);
+            this.Controls.Add(this.lblApply);
             this.Controls.Add(this.panelChannelB);
             this.Controls.Add(this.panelResult);
             this.Controls.Add(this.panelApply);
@@ -366,5 +389,7 @@
         private System.Windows.Forms.RadioButton radioApplyAll;
         private System.Windows.Forms.RadioButton radioApplyB;
         private System.Windows.Forms.RadioButton radioApplyA;
+        private System.Windows.Forms.Label lblApply;
+        private System.Windows.Forms.Label label1;
     }
 }

@@ -64,6 +64,7 @@ namespace Operations
 
         Channel mi_Analog;
         float   mf_AdaptiveMinPct;
+        Range   mk_Selection;
 
         /// <summary>
         /// Implementation of interface IOperation
@@ -104,13 +105,17 @@ namespace Operations
             comboMethod.Items.Add(METHOD_ADAPTIVE);
             comboMethod.Items.Add(METHOD_MIN_MAX);
 
-            radioOneChannel.Text = "Convert analog channel  " + mi_Analog.ms_Name;
+            radioOneChannel.Text = "Convert analog channel  '" + mi_Analog.ms_Name + "'";
             radioOneChannel.ForeColor = PanelOszi.GetChannelColor(mi_Analog);
             textNewName.Text = Utils.RegReadString(eRegKey.AD_Result, "Math Result");
 
             // ALWAYS start with Threshold A/D
             // The other methods are very special and must be selected each time explicitely by the user.
             comboMethod.SelectedIndex = 0;
+
+            String s_Display;
+            mk_Selection  = Utils.PanelOszi.GetUserSelectionOrAll(out s_Display);
+            lblApply.Text = "Apply to: " + s_Display;
 
             try
             {
@@ -253,8 +258,6 @@ namespace Operations
 
             bool b_Multi = radioAllChannels.Checked && Utils.CurCapture.ms32_AnalogCount > 1;
 
-            Range k_Sel = Utils.PanelOszi.UserSelectionOrAll;
-
             foreach (Channel i_Channel in Utils.CurCapture.mi_Channels)
             {
                 if (b_Multi)
@@ -265,9 +268,9 @@ namespace Operations
 
                 switch (comboMethod.Text)
                 {
-                    case METHOD_THRESHOLD: Digitizer.ThresholdAD(i_Anal, i_Digi, k_Sel); break;
-                    case METHOD_ADAPTIVE:  Digitizer.AdaptiveAD (i_Anal, i_Digi, k_Sel,  mf_AdaptiveMinPct); break;
-                    case METHOD_MIN_MAX:   Digitizer.MinMaxAD   (i_Anal, i_Digi, k_Sel); break;
+                    case METHOD_THRESHOLD: Digitizer.ThresholdAD(i_Anal, i_Digi, mk_Selection); break;
+                    case METHOD_ADAPTIVE:  Digitizer.AdaptiveAD (i_Anal, i_Digi, mk_Selection,  mf_AdaptiveMinPct); break;
+                    case METHOD_MIN_MAX:   Digitizer.MinMaxAD   (i_Anal, i_Digi, mk_Selection); break;
                     default:
                         Debug.Assert(false, "Programming Error: Invalid ComboBox items");
                         return;

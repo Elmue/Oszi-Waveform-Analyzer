@@ -87,6 +87,7 @@ namespace Operations
         bool    mb_Single;
         Size    mk_ClientSize;
         Panel[] mi_Panels;
+        Range   mk_Selection;
 
         /// <summary>
         /// Implementation of interface IOperation
@@ -126,6 +127,10 @@ namespace Operations
             mi_Panels     = new Panel[] { panelChannelB, panelResult, panelApply, panelParam};
 
             lblMathMode.Text = mb_Analog ? "Analog" : "Digital";
+
+            String s_Display;
+            mk_Selection  = Utils.PanelOszi.GetUserSelectionOrAll(out s_Display);
+            lblApply.Text = s_Display;
 
             foreach (Channel i_Channel in Utils.CurCapture.mi_Channels)
             {
@@ -282,7 +287,7 @@ namespace Operations
                 Channel[] i_ApplyTo = Prepare(); // throws
 
                 // Get the sample range that the user has selected (if any)
-                Range k_Sel = Utils.PanelOszi.UserSelectionOrAll;
+                Range k_Sel = mk_Selection;
 
                 if (mb_Analog)
                 {

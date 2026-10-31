@@ -518,7 +518,8 @@ namespace OsziWaveformAnalyzer
             if (mi_Channel == null)
                 return;
 
-            mk_UserSel = Utils.PanelOszi.UserSelectionOrAll;
+            String s_Display;
+            mk_UserSel = Utils.PanelOszi.GetUserSelectionOrAll(out s_Display);
             bool b_Truncated = false;
 
             ms32_StartSmpl = mk_UserSel.ms32_Start;
@@ -1238,14 +1239,14 @@ namespace OsziWaveformAnalyzer
             RtfBuilder  i_Builder  = i_RtfDoc.CreateNewBuilder();
 
             i_Builder.AppendLine(Color.White, "FFT Spectrum Analysis of channel '" + mi_Channel.ms_Name + "'", FontStyle.Underline);
-            i_Builder.Append2ColorPair(Color.Cyan, "Scale:",       14, Color.White, "{0}",    Utils.GetDescriptionAttribute(me_Scale));
-            i_Builder.Append2ColorPair(Color.Cyan, "Samples:",     14, Color.White, "{0:N0}", ms32_SmplCount);
-            i_Builder.Append2ColorPair(Color.Cyan, "FFT size:",    14, Color.White, "{0:N0}", ms32_FftSize);
-            i_Builder.Append2ColorPair(Color.Cyan, "Sample rate:", 14, Color.White, "{0}",    FormatFreq(md_SampleRate));
-            i_Builder.Append2ColorPair(Color.Cyan, "Nyquist:",     14, Color.White, "{0}",    FormatFreq(md_FreqNyquist));
-            i_Builder.Append2ColorPair(Color.Cyan, "Resolution:",  14, Color.White, "{0}",    FormatFreq(md_SampleRate / ms32_SmplCount));
-            i_Builder.Append2ColorPair(Color.Cyan, "Bin Width:",   14, Color.White, "{0}",    FormatFreq(md_BinWidth));
-            i_Builder.Append2ColorPair(Color.Cyan, "Window:",      14, Color.White, "{0}",    Utils.GetDescriptionAttribute(me_Window));
+            i_Builder.Append2ColorPair(Color.Cyan, "Sample rate:",   14, Color.White, "{0}",    FormatFreq(md_SampleRate));
+            i_Builder.Append2ColorPair(Color.Cyan, "Nyquist:",       14, Color.White, "{0}",    FormatFreq(md_FreqNyquist));
+            i_Builder.Append2ColorPair(Color.Cyan, "Resolution:",    14, Color.White, "{0}",    FormatFreq(md_SampleRate / ms32_SmplCount));
+            i_Builder.Append2ColorPair(Color.Cyan, "Bin Width:",     14, Color.White, "{0}",    FormatFreq(md_BinWidth));
+            i_Builder.Append2ColorPair(Color.Cyan, "Window:",        14, Color.White, "{0}",    Utils.GetDescriptionAttribute(me_Window));
+            i_Builder.Append2ColorPair(Color.Cyan, "FFT size:",      14, Color.White, "{0:N0}", ms32_FftSize);
+            i_Builder.Append2ColorPair(Color.Cyan, "Start Sample:",  14, Color.White, "{0:N0}", ms32_StartSmpl);
+            i_Builder.Append2ColorPair(Color.Cyan, "Sample Count:",  14, Color.White, "{0:N0}", ms32_SmplCount);
             i_Builder.AppendText      (Color.Cyan, "Signal Start: ");
             i_Builder.AppendTimestamp (false, ms32_StartSmpl, ms32_StartSmpl + ms32_SmplCount - 1);
             i_Builder.AppendText("\n\n");

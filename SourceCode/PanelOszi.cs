@@ -328,12 +328,17 @@ namespace OsziWaveformAnalyzer
         /// returns the samples to be used in an operation, like Mathematical.
         /// If the user has not selected samples, the operation is executed on the entire capture.
         /// </summary>
-        public Range UserSelectionOrAll
+        public Range GetUserSelectionOrAll(out String s_Display)
         {
-            get
+            if (mk_Selection.IsValid)
             {
-                if (mk_Selection.IsValid) return mk_Selection;
-                else                      return new Range(0, Utils.CurCapture.ms32_Samples);
+                s_Display = String.Format("Samples {0:N0} ... {1:N0}", mk_Selection.ms32_Start, mk_Selection.ms32_End);
+                return mk_Selection;
+            }
+            else
+            {
+                s_Display = "All samples";
+                return new Range(0, Utils.CurCapture.ms32_Samples);
             }
         }
 

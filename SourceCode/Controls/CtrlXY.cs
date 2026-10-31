@@ -86,15 +86,16 @@ namespace OsziWaveformAnalyzer
             mi_Scrollbar = i_Scrollbar;
 
             InitializeComponent();
-            i_Tooltip.SetToolTip(lblSmplCount, "The Glow Count defines how long the phosphor glow effect takes to decay.\n"
+            i_Tooltip.SetToolTip(lblSmplCount, "The 'Glow Count' defines how long the phosphor glow effect takes to decay.\n"
                                              + "Type a value and hit Enter to store it.");
-            i_Tooltip.SetToolTip(lblPlayStep,  "The Play Step defines the speed in play mode.\n"
+            i_Tooltip.SetToolTip(lblPlayStep,  "The 'Play Step' defines the speed in play mode.\n"
                                              + "Type a value and hit Enter to store it.");
             i_Tooltip.SetToolTip(btnPlay,      "Play the file in the X/Y plot showing 'Sample Count' samples at once\n"
-                                             + "and advancing 'Step' samples every 20 ms (50 frames / second).");
+                                             + "and advancing 'Play Step' samples every 20 ms (50 frames / second).");
             i_Tooltip.SetToolTip(btnStop,      "Stop playing the file");
             i_Tooltip.SetToolTip(btnReset,     "Reset play position to start of file");
             i_Tooltip.SetToolTip(btnRepeat,    "Enable / disable auto repeat");
+            i_Tooltip.SetToolTip(btnSet,       "After entering new values for 'Glow Count' and 'Play Step' you must click this button.");
             i_Tooltip.SetToolTip(btnJump,      "Jump to the play location in the Oszi panel, set the cursor and highlight\n"
                                              + "all samples that are currently visible in the X/Y plot.");
 

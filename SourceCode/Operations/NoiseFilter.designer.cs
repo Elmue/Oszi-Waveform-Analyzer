@@ -38,6 +38,7 @@
             this.lblCycles = new System.Windows.Forms.Label();
             this.lblChannel = new System.Windows.Forms.Label();
             this.linkHelp = new System.Windows.Forms.LinkLabel();
+            this.lblApply = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.trackSuppr)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.trackCycles)).BeginInit();
             this.SuspendLayout();
@@ -55,7 +56,7 @@
             this.btnApply.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
             this.btnApply.DialogResult = System.Windows.Forms.DialogResult.OK;
             this.btnApply.ForeColor = System.Drawing.Color.Black;
-            this.btnApply.Location = new System.Drawing.Point(228, 145);
+            this.btnApply.Location = new System.Drawing.Point(228, 161);
             this.btnApply.Name = "btnApply";
             this.btnApply.Size = new System.Drawing.Size(85, 23);
             this.btnApply.TabIndex = 5;
@@ -89,7 +90,7 @@
             this.btnCancel.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
             this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
             this.btnCancel.ForeColor = System.Drawing.Color.Black;
-            this.btnCancel.Location = new System.Drawing.Point(129, 145);
+            this.btnCancel.Location = new System.Drawing.Point(129, 161);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(85, 23);
             this.btnCancel.TabIndex = 8;
@@ -134,7 +135,7 @@
             this.linkHelp.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.linkHelp.AutoSize = true;
             this.linkHelp.LinkColor = System.Drawing.Color.Lime;
-            this.linkHelp.Location = new System.Drawing.Point(323, 149);
+            this.linkHelp.Location = new System.Drawing.Point(323, 165);
             this.linkHelp.Name = "linkHelp";
             this.linkHelp.Size = new System.Drawing.Size(59, 13);
             this.linkHelp.TabIndex = 116;
@@ -142,12 +143,23 @@
             this.linkHelp.Text = "Show Help";
             this.linkHelp.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkHelp_LinkClicked);
             // 
+            // lblApply
+            // 
+            this.lblApply.AutoSize = true;
+            this.lblApply.ForeColor = System.Drawing.Color.White;
+            this.lblApply.Location = new System.Drawing.Point(7, 141);
+            this.lblApply.Name = "lblApply";
+            this.lblApply.Size = new System.Drawing.Size(48, 13);
+            this.lblApply.TabIndex = 117;
+            this.lblApply.Text = "Apply to:";
+            // 
             // NoiseFilter
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.DimGray;
-            this.ClientSize = new System.Drawing.Size(441, 179);
+            this.ClientSize = new System.Drawing.Size(441, 195);
+            this.Controls.Add(this.lblApply);
             this.Controls.Add(this.linkHelp);
             this.Controls.Add(this.lblChannel);
             this.Controls.Add(this.lblCycles);
@@ -184,5 +196,6 @@
         private System.Windows.Forms.Label lblCycles;
         private System.Windows.Forms.Label lblChannel;
         private System.Windows.Forms.LinkLabel linkHelp;
+        private System.Windows.Forms.Label lblApply;
     }
 }
