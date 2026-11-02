@@ -127,6 +127,7 @@
 <a name="ImplementOszi"></a>
 <h3>Current Implementation of Oscilloscope Models</h3>
 
+<div class="TableContainer">
 <table class="DataTable">
 <tr><th>Oscilloscope Brand</th><th>Serie</th><th>File Import</th><th>SCPI Transfer</th><th>Tested</th></tr>
 <tr><td class="Green">Rigol</td><td>DS1000Z</td> <td>CSV</td><td>USB, VXI, TCP</td><td>by Elmü on DS1074Z</td></tr>
@@ -147,6 +148,7 @@
 <tr><td class="Red">Hantek</td>              <td>TODO</td><td colspan="3">Download <a href="https://www.hantek.com/Product/DSO4000BC/DSO4000BC_SCPI_EN.pdf" target="_blank">Manual</a></td></tr>
 <tr><td class="Red">Other Brands</td>        <td>TODO</td><td colspan="3">Use Google ...</td></tr>
 </table>
+</div>
 
 <a name="Decoders"></a>
 <h3>Current Implementation of Decoders</h3>
@@ -223,7 +225,7 @@
 <p>
 <h3>Selection</h3>
 <div>You can select samples by dragging the mouse while pressing SHIFT or in the menu itself.</div>
-<div>Several functions in the menu can be applied to only a part of the signal after selecting a range of samples,<div>
+<div>Several functions in the menu can be applied to only a part of the signal after selecting a range of samples,</div>
 <div>these are: A/D Conversion, Copy/Paste, Delete Samples, Mathematical, Noise Filter, FFT Analysis.</div>
 
 
@@ -735,16 +737,16 @@
 <tr><td>USB</td><td><div>SCPI commands are sent over USB in TMC (Test and Measurement Class) frames.</div>
                     <div>Oszi Waveform Analyzer automatically finds connected TMC devices.</div>
                     <div>USB is the only option that works <b>out of the box</b> without needing critical settings.</div>
-                    <div>But you must install the <b>IVI driver</b> in the Transfer window. See <a href="#USBConnection">below</a>.</div></div></td></tr>
+                    <div>But you must install the <b>IVI driver</b> in the Transfer window. See <a href="#USBConnection">below</a>.</div></td></tr>
 <tr><td>VXI</td><td><div>SCPI commands are sent over LAN using the VXI-11 protocol.</div>
                     <div>The button <b>Search</b> sends a UDP request that finds connected VXI devices in the same network.</div>
                     <div>Oszi Waveform Analyzer pre-selects the correct <b>VXI Link</b> for you. See <a href="#VXIConnection">below</a>.</div></td></tr>
 <tr><td>TCP</td><td><div>SCPI commands are sent over LAN in TCP packets as ASCII.</div>
                     <div>Oszi Waveform Analyzer pre-selects the correct <b>TCP port</b> for you.</div>
-                    <div>It is recommended to assign a <b>static IP address</b> to your oscilloscope. See <a href="#TCPConnection">below</a>.</div></div></td></tr>
+                    <div>It is recommended to assign a <b>static IP address</b> to your oscilloscope. See <a href="#TCPConnection">below</a>.</div></td></tr>
 <tr><td>RS232</td><td><div>SCPI commands are sent over RS232 or a virtual COM port as ASCII.</div>
                       <div>Oszi Waveform Analyzer pre-selects the correct <b>RS232 settings</b> for you.</div>
-                      <div>You only have to enter the <b>baudrate</b> that is configured in your oscilloscope. See <a href="#RS232Connection">below</a>.</div></div></td></tr>
+                      <div>You only have to enter the <b>baudrate</b> that is configured in your oscilloscope. See <a href="#RS232Connection">below</a>.</div></td></tr>
 </table>
 
 

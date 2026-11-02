@@ -954,7 +954,8 @@ namespace OsziWaveformAnalyzer
             {
                 mk_LastTipPos = e.Location;
 
-                int s32_Bin = (int)Math.Round(XToFreq(e.X) / md_BinWidth);
+                double d_Frequ = XToFreq(e.X);
+                int s32_Bin = (int)Math.Round(d_Frequ / md_BinWidth);
                 if (mr_Plot.Contains(e.Location) && s32_Bin >= 0 && s32_Bin < md_Amp.Length)
                 {
                     String s_Tooltip = String.Format("Channel Name: {0}\n"
@@ -967,7 +968,7 @@ namespace OsziWaveformAnalyzer
                                                    + "Sample Count: {5:N0}\n"
                                                    + "Analog Resolution: {6} bit",
                                                    mi_Channel.ms_Name, 
-                                                   FormatFreq(s32_Bin * md_BinWidth, 3),
+                                                   FormatFreq(d_Frequ, 3),
                                                    FormatAmplitude(md_Amp[s32_Bin]),
                                                    s32_Bin,
                                                    mk_UserSel.ms32_Start, mk_UserSel.Count,
